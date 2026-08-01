@@ -52,10 +52,10 @@
   <% } else { %>
     <form method="post" action="/checks/<%= check.id %>/company-attributes" class="form">
       <label>年商（分かる範囲で。任意）
-        <input type="text" name="annual_revenue" placeholder="例）約5億円（20XX年度、EDINET確認）">
+        <input type="text" name="annual_revenue" value="<%= check.annual_revenue || '' %>" placeholder="例）約5億円（20XX年度、EDINET確認）">
       </label>
       <label>連絡先（任意）
-        <input type="text" name="contact_phone" placeholder="例）03-XXXX-XXXX（公式サイト記載）">
+        <input type="text" name="contact_phone" value="<%= check.contact_phone || '' %>" placeholder="例）03-XXXX-XXXX（公式サイト記載）">
       </label>
       <label>行政処分の有無（必須）
         <select name="admin_sanction_status" required>

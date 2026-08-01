@@ -26,14 +26,30 @@
     <p class="hint">gBizINFO上にデータが未登録の企業（小規模企業等）では項目が空欄になる場合があります。</p>
   </section>
 
+  <section class="panel">
+    <h2>財務情報（年商等）</h2>
+    <% if (finance && finance.length > 0) { %>
+      <p class="hint">EDINET（金融庁 有価証券報告書）に基づく情報です。直近の決算期のデータを表示しています。</p>
+      <table class="kv">
+        <tr><th>決算期</th><td><%= finance[0].settlementDate || finance[0].fiscalYear || '-' %></td></tr>
+        <tr><th>売上高（年商）</th><td><%= finance[0].netSales ? Number(finance[0].netSales).toLocaleString() + ' 円' : '情報なし' %></td></tr>
+        <tr><th>営業利益</th><td><%= finance[0].operatingProfit ? Number(finance[0].operatingProfit).toLocaleString() + ' 円' : '情報なし' %></td></tr>
+        <tr><th>総資産</th><td><%= finance[0].totalAssets ? Number(finance[0].totalAssets).toLocaleString() + ' 円' : '情報なし' %></td></tr>
+      </table>
+      <% if (finance.length > 1) { %><p class="hint">過去<%= finance.length %>期分のデータが取得できています（直近期のみ表示）。</p><% } %>
+    <% } else { %>
+      <p class="badge warn">財務情報なし</p>
+      <p class="hint">
+        有価証券報告書の提出義務がある企業（主に上場企業等）以外は、gBizINFOに財務情報が登録されていません。
+        非上場企業の年商は、SafeBiz等の商用チェックツールや企業への直接確認が必要です。
+      </p>
+    <% } %>
+  </section>
+
   <section class="panel panel-danger">
     <h2>このシステムでは自動取得できない項目</h2>
     <p class="hint">以下は無料の公的APIには存在しないため、下記の確認先を参照のうえ、チェック案件の画面で手動記録してください。</p>
     <table class="kv">
-      <tr>
-        <th>年商（売上高）</th>
-        <td>上場企業は<a href="https://disclosure2.edinet-fsa.go.jp/" target="_blank" rel="noopener">EDINET（金融庁 有価証券報告書）</a>で確認可能。非上場企業は原則非公開のため、商用DB（SafeBiz等）や企業への直接確認が必要です。</td>
-      </tr>
       <tr>
         <th>連絡先（電話番号等）</th>
         <td>企業公式サイト、または商用DBでの確認が必要です。</td>
@@ -61,6 +77,7 @@
     <input type="hidden" name="employee_count" value="<%= company.employeeCount || '' %>">
     <input type="hidden" name="business_category" value="<%= company.businessCategory || '' %>">
     <input type="hidden" name="established_date" value="<%= company.establishedDate || '' %>">
+    <input type="hidden" name="annual_revenue" value="<%= (finance && finance[0] && finance[0].netSales) ? Number(finance[0].netSales).toLocaleString() + '円（' + (finance[0].settlementDate || finance[0].fiscalYear || '決算期不明') + '、EDINET）' : '' %>">
     <input type="hidden" name="registry_source" value="gBizINFO">
     <button type="submit">この企業情報でチェック依頼を作成</button>
   </form>

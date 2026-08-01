@@ -3,10 +3,10 @@
 
 <h1>企業情報検索</h1>
 <p class="hint">
-  企業名を入力すると、経済産業省が提供する無料の法人情報API「<strong>gBizINFO</strong>」から
-  法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を自動取得します。<br>
-  <strong>年商（売上高）・連絡先・過去の行政処分の有無は、gBizINFOを含む無料の公的APIには存在しないため自動取得できません。</strong>
-  該当企業の詳細画面で、確認先リンクを案内した上で手動記録する形になります。
+  経済産業省が提供する無料の法人情報API「<strong>gBizINFO</strong>」から、
+  法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を取得します。<br>
+  年商（売上高）は、<strong>有価証券報告書を提出している企業（主に上場企業等）のみ</strong>取得できる場合があります（財務情報の欄を参照）。
+  連絡先・行政処分の有無は無料APIには存在しないため、企業の詳細画面で確認先を案内した上で手動記録する形になります。
 </p>
 
 <% if (!configured) { %>
@@ -17,30 +17,79 @@
   </div>
 <% } else { %>
 
-  <% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
+  <section class="panel">
+    <h2>法人番号が分かっている場合（最も確実に1社へ絞り込めます）</h2>
+    <form method="get" action="/companies/goto" class="form" style="flex-direction:row; align-items:flex-end; gap:8px;">
+      <label style="flex:1;">法人番号（13桁）
+        <input type="text" name="corporate_number" placeholder="例）1234567890123">
+      </label>
+      <button type="submit">この法人番号で開く</button>
+    </form>
+  </section>
 
-  <form method="post" action="/companies/lookup" class="form">
-    <label>企業名
-      <input type="text" name="name" value="<%= query %>" placeholder="例）株式会社サンプル商事" required>
-    </label>
-    <button type="submit">検索</button>
-  </form>
+  <section class="panel">
+    <h2>企業名から検索（同名の別会社と区別するため、絞り込み条件の追加を推奨）</h2>
+
+    <% if (error) { %><div class="alert"><%= error %></div><% } %>
+
+    <form method="post" action="/companies/lookup" class="form">
+      <label>企業名（必須）
+        <input type="text" name="name" value="<%= form.name || '' %>" placeholder="例）株式会社サンプル商事" required>
+      </label>
+      <label>都道府県（本社所在地で絞り込み・任意）
+        <select name="prefecture">
+          <option value="">指定しない</option>
+          <% prefectures.forEach(p => { %>
+            <option value="<%= p.code %>" <%= form.prefecture === p.code ? 'selected' : '' %>><%= p.name %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>法人種別（任意）
+        <select name="corporate_type">
+          <option value="">指定しない</option>
+          <option value="301" <%= form.corporate_type === '301' ? 'selected' : '' %>>株式会社</option>
+          <option value="302" <%= form.corporate_type === '302' ? 'selected' : '' %>>有限会社</option>
+          <option value="303" <%= form.corporate_type === '303' ? 'selected' : '' %>>合名会社</option>
+          <option value="304" <%= form.corporate_type === '304' ? 'selected' : '' %>>合資会社</option>
+          <option value="305" <%= form.corporate_type === '305' ? 'selected' : '' %>>合同会社</option>
+        </select>
+      </label>
+      <label>資本金レンジ（円・任意）
+        <div style="display:flex; gap:8px;">
+          <input type="number" name="capital_from" value="<%= form.capital_from || '' %>" placeholder="下限">
+          <input type="number" name="capital_to" value="<%= form.capital_to || '' %>" placeholder="上限">
+        </div>
+      </label>
+      <label>従業員数レンジ（人・任意）
+        <div style="display:flex; gap:8px;">
+          <input type="number" name="employee_from" value="<%= form.employee_from || '' %>" placeholder="下限">
+          <input type="number" name="employee_to" value="<%= form.employee_to || '' %>" placeholder="上限">
+        </div>
+      </label>
+      <button type="submit">検索</button>
+    </form>
+  </section>
 
   <% if (results) { %>
     <h2>検索結果（<%= results.length %>件）</h2>
+    <% if (results.length > 1) { %>
+      <p class="hint">同名または類似名の企業が複数見つかりました。所在地・資本金・従業員数を見比べて対象企業を特定してください。特定できない場合は、都道府県や資本金レンジを追加して再検索してください。</p>
+    <% } %>
     <table class="tbl">
-      <thead><tr><th>法人番号</th><th>商号</th><th>本社所在地</th><th></th></tr></thead>
+      <thead><tr><th>法人番号</th><th>商号</th><th>本社所在地</th><th>資本金</th><th>従業員数</th><th></th></tr></thead>
       <tbody>
         <% results.forEach(r => { %>
           <tr>
             <td><%= r.corporateNumber || '-' %></td>
             <td><%= r.name || '-' %></td>
             <td><%= r.address || '-' %></td>
+            <td><%= r.capital ? Number(r.capital).toLocaleString() + '円' : '-' %></td>
+            <td><%= r.employeeCount ? Number(r.employeeCount).toLocaleString() + '人' : '-' %></td>
             <td><a href="/companies/<%= r.corporateNumber %>">詳細を見る</a></td>
           </tr>
         <% }) %>
         <% if (results.length === 0) { %>
-          <tr><td colspan="4">該当する企業が見つかりませんでした。</td></tr>
+          <tr><td colspan="6">該当する企業が見つかりませんでした。条件を緩めて再検索してください。</td></tr>
         <% } %>
       </tbody>
     </table>

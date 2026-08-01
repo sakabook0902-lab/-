@@ -1,44 +1,63 @@
 /**
  * 反社チェック支援スプレッドシート用スクリプト
  *
- * A列に会社名を入力し、メニューから実行すると、
+ * A列に会社名（必要に応じてB列に都道府県）を入力し、メニューから実行すると、
  * gBizINFO（経済産業省の無料API）から
  * 法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を自動取得して
- * 同じ行のB列以降に書き込みます。
+ * 同じ行に書き込みます。年商（売上高）は、有価証券報告書を提出している企業
+ * （主に上場企業等）に限り、財務情報として自動取得できます。
  *
- * 年商・連絡先・過去の行政処分の有無は無料の公的APIには存在しないため
- * 自動取得できません。I〜K列は手動確認して入力する欄として用意しています。
+ * 同姓同名の企業が複数ある場合は、B列に都道府県を入れて絞り込むか、
+ * 法人番号が分かっていれば「法人番号から直接取得」を使うと確実です。
+ *
+ * 連絡先・過去の行政処分の有無は無料の公的APIには存在しないため
+ * 自動取得できません。手動確認して入力する欄を用意しています。
  */
 
 const COL = {
-  NAME: 1,             // A: 会社名（入力）
-  CORPORATE_NUMBER: 2, // B: 法人番号
-  ADDRESS: 3,           // C: 本社所在地
-  REPRESENTATIVE: 4,    // D: 代表者
-  CAPITAL: 5,            // E: 資本金
-  EMPLOYEE_COUNT: 6,    // F: 従業員数
-  BUSINESS_CATEGORY: 7, // G: 業種
-  ESTABLISHED_DATE: 8,  // H: 設立年月日
-  ANNUAL_REVENUE: 9,    // I: 年商（手動確認）
-  CONTACT: 10,           // J: 連絡先（手動確認）
-  SANCTION_STATUS: 11,  // K: 行政処分の有無（手動確認）
-  NOTE: 12,               // L: 備考
-  LOOKED_UP_AT: 13,     // M: 情報取得日時
+  NAME: 1,               // A: 会社名（入力）
+  PREFECTURE: 2,          // B: 都道府県（絞り込み・任意入力、都道府県名でOK）
+  CORPORATE_NUMBER: 3,    // C: 法人番号（分かっていれば直接入力してもよい）
+  ADDRESS: 4,              // D: 本社所在地
+  REPRESENTATIVE: 5,      // E: 代表者
+  CAPITAL: 6,               // F: 資本金
+  EMPLOYEE_COUNT: 7,      // G: 従業員数
+  BUSINESS_CATEGORY: 8,   // H: 業種
+  ESTABLISHED_DATE: 9,    // I: 設立年月日
+  ANNUAL_REVENUE_AUTO: 10, // J: 年商（自動・EDINET提出企業のみ）
+  ANNUAL_REVENUE_MANUAL: 11, // K: 年商（手動確認・非上場企業等）
+  CONTACT: 12,              // L: 連絡先（手動確認）
+  SANCTION_STATUS: 13,    // M: 行政処分の有無（手動確認）
+  NOTE: 14,                  // N: 備考
+  LOOKED_UP_AT: 15,       // O: 情報取得日時
 };
 
 const HEADERS = [
-  '会社名（入力）', '法人番号', '本社所在地', '代表者', '資本金', '従業員数',
-  '業種', '設立年月日', '年商（手動確認）', '連絡先（手動確認）',
+  '会社名（入力）', '都道府県（絞り込み・任意）', '法人番号', '本社所在地', '代表者',
+  '資本金', '従業員数', '業種', '設立年月日',
+  '年商（自動・上場企業等のみ）', '年商（手動確認）', '連絡先（手動確認）',
   '行政処分の有無（手動確認）', '備考', '情報取得日時',
 ];
+
+const PREFECTURE_CODES = {
+  '北海道': '01', '青森県': '02', '岩手県': '03', '宮城県': '04', '秋田県': '05', '山形県': '06',
+  '福島県': '07', '茨城県': '08', '栃木県': '09', '群馬県': '10', '埼玉県': '11', '千葉県': '12',
+  '東京都': '13', '神奈川県': '14', '新潟県': '15', '富山県': '16', '石川県': '17', '福井県': '18',
+  '山梨県': '19', '長野県': '20', '岐阜県': '21', '静岡県': '22', '愛知県': '23', '三重県': '24',
+  '滋賀県': '25', '京都府': '26', '大阪府': '27', '兵庫県': '28', '奈良県': '29', '和歌山県': '30',
+  '鳥取県': '31', '島根県': '32', '岡山県': '33', '広島県': '34', '山口県': '35', '徳島県': '36',
+  '香川県': '37', '愛媛県': '38', '高知県': '39', '福岡県': '40', '佐賀県': '41', '長崎県': '42',
+  '熊本県': '43', '大分県': '44', '宮崎県': '45', '鹿児島県': '46', '沖縄県': '47',
+};
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('反社チェック支援')
     .addItem('シートの初期設定（見出し作成）', 'setupSheet')
     .addSeparator()
-    .addItem('この行の会社情報を検索', 'fillSelectedRow')
-    .addItem('選択範囲を一括検索', 'fillSelectedRange')
+    .addItem('この行を会社名で検索', 'fillSelectedRow')
+    .addItem('この行を法人番号から直接取得（最も確実）', 'fillSelectedRowByCorporateNumber')
+    .addItem('選択範囲を一括検索（会社名ベース）', 'fillSelectedRange')
     .addSeparator()
     .addItem('gBizINFO APIトークンを設定', 'setApiToken')
     .addToUi();
@@ -58,7 +77,10 @@ function setupSheet() {
     .build();
   sheet.getRange(2, COL.SANCTION_STATUS, 500, 1).setDataValidation(rule);
 
-  SpreadsheetApp.getUi().alert('見出しを作成しました。A列に会社名を入力してください。');
+  SpreadsheetApp.getUi().alert(
+    'A列に会社名、任意でB列に都道府県（例：東京都）を入力してください。\n' +
+    '法人番号が分かっている場合はC列に直接入力し、「法人番号から直接取得」を使うと最も確実です。'
+  );
 }
 
 // --- APIトークンの設定・保存（スクリプトのプロパティに保存され、シートには表示されません） ---
@@ -83,13 +105,11 @@ function getToken_() {
   return PropertiesService.getScriptProperties().getProperty('GBIZINFO_TOKEN');
 }
 
-// --- gBizINFOへの問い合わせ本体 ---
-function searchCompanyByName_(name) {
+function callGbizInfo_(url) {
   const token = getToken_();
   if (!token) {
     throw new Error('APIトークンが未設定です。メニューの「gBizINFO APIトークンを設定」から設定してください。');
   }
-  const url = 'https://info.gbiz.go.jp/hojin/v1/hojin?name=' + encodeURIComponent(name);
   const response = UrlFetchApp.fetch(url, {
     headers: { Accept: 'application/json', 'X-hojinInfo-api-token': token },
     muteHttpExceptions: true,
@@ -98,25 +118,43 @@ function searchCompanyByName_(name) {
   if (code !== 200) {
     throw new Error('gBizINFOへの問い合わせに失敗しました（HTTP ' + code + '）。トークンが正しいか確認してください。');
   }
-  const data = JSON.parse(response.getContentText());
+  return JSON.parse(response.getContentText());
+}
+
+// --- 会社名（＋都道府県）で検索。同名の別会社と区別するため都道府県での絞り込みに対応 ---
+function searchCompanyByName_(name, prefectureName) {
+  let url = 'https://info.gbiz.go.jp/hojin/v1/hojin?name=' + encodeURIComponent(name);
+  if (prefectureName) {
+    const code = PREFECTURE_CODES[String(prefectureName).trim()];
+    if (code) url += '&prefecture=' + code;
+  }
+  const data = callGbizInfo_(url);
+  const list = data['hojin-infos'] || [];
+  if (list.length > 1) {
+    throw new Error(list.length + '件ヒットしました。B列に都道府県を入力するか、法人番号での直接取得を使ってください。');
+  }
+  return list.length ? list[0] : null;
+}
+
+// --- 法人番号を直接指定して1社を取得（最も確実） ---
+function fetchCompanyByCorporateNumber_(corporateNumber) {
+  const url = 'https://info.gbiz.go.jp/hojin/v1/hojin/' + encodeURIComponent(corporateNumber);
+  const data = callGbizInfo_(url);
   const list = data['hojin-infos'] || [];
   return list.length ? list[0] : null;
 }
 
-// --- 1行分の書き込み ---
-function fillRow_(sheet, row) {
-  const name = sheet.getRange(row, COL.NAME).getValue();
-  if (!name) return;
+// --- 財務情報（年商等）の取得。EDINET(有価証券報告書)ベースのため、
+//     提出義務のある企業（主に上場企業等）以外はデータが存在しない ---
+function fetchFinance_(corporateNumber) {
+  const url = 'https://info.gbiz.go.jp/hojin/v1/hojin/' + encodeURIComponent(corporateNumber) + '/finance';
+  const data = callGbizInfo_(url);
+  const list = data['hojin-infos'] || data['finance'] || [];
+  return Array.isArray(list) && list.length ? list[0] : null;
+}
 
-  const info = searchCompanyByName_(String(name));
-  if (!info) {
-    sheet.getRange(row, COL.NOTE).setValue('該当なし（gBizINFO未登録、または表記ゆれの可能性。正式名称で再検索してください）');
-    return;
-  }
-
-  // gBizINFOの実際のレスポンス項目名は公開情報を元にしています。
-  // 想定と異なる場合は、Apps Scriptの実行ログ（表示 > ログ）で
-  // JSON.stringify(info) を出力して実際のキー名を確認し、下記を調整してください。
+// --- 取得した基本情報をシートに書き込む共通処理 ---
+function writeCompanyInfo_(sheet, row, info) {
   sheet.getRange(row, COL.CORPORATE_NUMBER).setValue(info.corporate_number || '');
   sheet.getRange(row, COL.ADDRESS).setValue(info.location || '');
   sheet.getRange(row, COL.REPRESENTATIVE).setValue(info.representative_name || '');
@@ -125,15 +163,56 @@ function fillRow_(sheet, row) {
   sheet.getRange(row, COL.BUSINESS_CATEGORY).setValue(info.business_summary || '');
   sheet.getRange(row, COL.ESTABLISHED_DATE).setValue(info.date_of_establishment || '');
   sheet.getRange(row, COL.LOOKED_UP_AT).setValue(new Date());
+
+  // 財務情報（年商）は取得できる企業とできない企業があるため、失敗しても他の処理は止めない
+  try {
+    const finance = fetchFinance_(info.corporate_number);
+    if (finance && finance.net_sales_summary_of_business_results) {
+      sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue(finance.net_sales_summary_of_business_results);
+    } else {
+      sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue('');
+      sheet.getRange(row, COL.NOTE).setValue('財務情報なし（非上場企業等。年商はK列に手動で確認結果を入力してください）');
+    }
+  } catch (e) {
+    sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue('');
+  }
 }
 
-// --- メニュー：選択中の1行だけ検索 ---
+// --- 1行分：会社名（＋都道府県）で検索して書き込む ---
+function fillRow_(sheet, row) {
+  const name = sheet.getRange(row, COL.NAME).getValue();
+  if (!name) return;
+  const prefecture = sheet.getRange(row, COL.PREFECTURE).getValue();
+
+  const info = searchCompanyByName_(String(name), prefecture);
+  if (!info) {
+    sheet.getRange(row, COL.NOTE).setValue('該当なし（gBizINFO未登録、または表記ゆれの可能性。正式名称で再検索してください）');
+    return;
+  }
+  writeCompanyInfo_(sheet, row, info);
+}
+
+// --- 1行分：法人番号（C列）から直接取得して書き込む ---
+function fillRowByCorporateNumber_(sheet, row) {
+  const corporateNumber = sheet.getRange(row, COL.CORPORATE_NUMBER).getValue();
+  if (!corporateNumber) {
+    throw new Error('C列（法人番号）が空です。先に法人番号を入力してください。');
+  }
+  const info = fetchCompanyByCorporateNumber_(String(corporateNumber).trim());
+  if (!info) {
+    sheet.getRange(row, COL.NOTE).setValue('該当なし（法人番号が正しいか確認してください）');
+    return;
+  }
+  writeCompanyInfo_(sheet, row, info);
+}
+
+// --- メニュー：選択中の1行を会社名で検索 ---
 function fillSelectedRow() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSheet();
   const row = sheet.getActiveCell().getRow();
   if (row === 1) {
-    ui.alert('見出し行(1行目)は選択しないでください。会社名を入力した行のセルを選んでから実行してください。');
+    ui.alert('見出し行(1行目)は選択しないでください。');
     return;
   }
   try {
@@ -143,7 +222,23 @@ function fillSelectedRow() {
   }
 }
 
-// --- メニュー：選択範囲を複数行まとめて検索 ---
+// --- メニュー：選択中の1行を法人番号から直接取得 ---
+function fillSelectedRowByCorporateNumber() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const row = sheet.getActiveCell().getRow();
+  if (row === 1) {
+    ui.alert('見出し行(1行目)は選択しないでください。');
+    return;
+  }
+  try {
+    fillRowByCorporateNumber_(sheet, row);
+  } catch (e) {
+    ui.alert(e.message);
+  }
+}
+
+// --- メニュー：選択範囲を複数行まとめて会社名で検索 ---
 function fillSelectedRange() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSheet();
@@ -159,8 +254,9 @@ function fillSelectedRange() {
       fillRow_(sheet, row);
       Utilities.sleep(300); // 連続リクエストの負荷を抑えるための簡易ウェイト
     } catch (e) {
+      sheet.getRange(row, COL.NOTE).setValue('エラー: ' + e.message);
       errorCount++;
     }
   }
-  ui.alert('処理が完了しました。' + (errorCount ? errorCount + '件でエラーが発生しました。' : ''));
+  ui.alert('処理が完了しました。' + (errorCount ? errorCount + '件でエラーが発生しました（各行のN列に理由を記載）。' : ''));
 }

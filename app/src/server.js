@@ -2,6 +2,7 @@ const path = require('path');
 const express = require('express');
 const db = require('./db');
 const gbizinfo = require('./services/gbizinfo');
+const prefectures = require('./services/prefectures');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +76,7 @@ app.post('/checks/new', (req, res) => {
     business_category,
     established_date,
     registry_source,
+    annual_revenue,
     requested_by,
   } = req.body;
 
@@ -96,9 +98,9 @@ app.post('/checks/new', (req, res) => {
       `INSERT INTO checks
         (party_name, party_name_kana, representative, address, corporate_number,
          capital, employee_count, business_category, established_date,
-         registry_source, registry_looked_up_at,
+         registry_source, registry_looked_up_at, annual_revenue,
          requested_by, blacklist_hit, blacklist_hit_detail, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       party_name,
@@ -112,6 +114,7 @@ app.post('/checks/new', (req, res) => {
       established_date || null,
       registry_source || null,
       registry_source ? new Date().toISOString() : null,
+      annual_revenue || null,
       requested_by,
       blacklistHit,
       blacklistDetail,
@@ -138,54 +141,74 @@ app.post('/checks/new', (req, res) => {
 app.get('/companies/lookup', (req, res) => {
   res.render('company_lookup', {
     configured: gbizinfo.isConfigured(),
-    query: '',
+    form: {},
     results: null,
     error: null,
+    prefectures,
   });
 });
 
 app.post('/companies/lookup', async (req, res) => {
-  const { name } = req.body;
+  const form = req.body;
   if (!gbizinfo.isConfigured()) {
-    return res.render('company_lookup', {
-      configured: false,
-      query: name || '',
-      results: null,
-      error: null,
-    });
+    return res.render('company_lookup', { configured: false, form, results: null, error: null, prefectures });
   }
-  if (!name) {
+  if (!form.name) {
     return res.render('company_lookup', {
       configured: true,
-      query: '',
+      form,
       results: null,
-      error: '企業名を入力してください。',
+      error: '企業名を入力してください。都道府県・資本金・従業員数の条件を追加すると、同名の別会社と区別しやすくなります。',
+      prefectures,
     });
   }
   try {
-    const results = await gbizinfo.searchByName(name);
-    res.render('company_lookup', { configured: true, query: name, results, error: null });
+    const results = await gbizinfo.search({
+      name: form.name,
+      prefecture: form.prefecture || null,
+      corporateType: form.corporate_type || null,
+      capitalFrom: form.capital_from || null,
+      capitalTo: form.capital_to || null,
+      employeeFrom: form.employee_from || null,
+      employeeTo: form.employee_to || null,
+    });
+    res.render('company_lookup', { configured: true, form, results, error: null, prefectures });
   } catch (e) {
     res.render('company_lookup', {
       configured: true,
-      query: name,
+      form,
       results: null,
       error: `検索に失敗しました（${e.message}）`,
+      prefectures,
     });
   }
 });
 
+// 法人番号が分かっている場合、名称検索を経由せず直接1社に絞り込む
+app.get('/companies/goto', (req, res) => {
+  const corporateNumber = (req.query.corporate_number || '').trim();
+  if (!corporateNumber) return res.redirect('/companies/lookup');
+  res.redirect(`/companies/${encodeURIComponent(corporateNumber)}`);
+});
+
 app.get('/companies/:corporateNumber', async (req, res) => {
   if (!gbizinfo.isConfigured()) {
-    return res.render('company_detail', { configured: false, company: null, error: null });
+    return res.render('company_detail', { configured: false, company: null, finance: null, error: null });
   }
   try {
     const company = await gbizinfo.fetchByCorporateNumber(req.params.corporateNumber);
-    res.render('company_detail', { configured: true, company, error: null });
+    let finance = [];
+    try {
+      finance = await gbizinfo.fetchFinance(req.params.corporateNumber);
+    } catch (financeErr) {
+      finance = []; // 財務情報がない（非上場企業等）場合はここに来る想定
+    }
+    res.render('company_detail', { configured: true, company, finance, error: null });
   } catch (e) {
     res.render('company_detail', {
       configured: true,
       company: null,
+      finance: null,
       error: `取得に失敗しました（${e.message}）`,
     });
   }
