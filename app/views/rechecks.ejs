@@ -1,0 +1,31 @@
+<% title = '再チェック期限 | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>再チェック期限一覧</h1>
+<p class="hint">承認済み案件のうち、次回再チェック期限が近い／超過しているものを一覧表示します。</p>
+
+<table class="tbl">
+  <thead><tr><th>ID</th><th>取引先名称</th><th>承認日</th><th>再チェック期限</th><th>状態</th></tr></thead>
+  <tbody>
+    <% checks.forEach(c => { %>
+      <tr>
+        <td><a href="/checks/<%= c.id %>">#<%= c.id %></a></td>
+        <td><%= c.party_name %></td>
+        <td><%= c.decided_at %></td>
+        <td><%= c.next_check_due %></td>
+        <td>
+          <% if (c.next_check_due <= today) { %>
+            <span class="badge danger">期限超過</span>
+          <% } else { %>
+            <span class="badge ok">期限内</span>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (checks.length === 0) { %>
+      <tr><td colspan="5">承認済みの案件はまだありません。</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/layout_bottom') %>

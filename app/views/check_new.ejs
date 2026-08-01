@@ -1,0 +1,31 @@
+<% title = '新規チェック依頼 | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>新規チェック依頼</h1>
+<p class="hint">登録すると、自社ブラックリストとの自動一次照合が実施されます。外部データ（SafeBiz等）の照会結果は、次の画面で担当者が記録してください。</p>
+
+<% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
+
+<form method="post" action="/checks/new" class="form">
+  <label>取引先名称（必須）
+    <input type="text" name="party_name" value="<%= form.party_name || '' %>" required>
+  </label>
+  <label>取引先名称（カナ）
+    <input type="text" name="party_name_kana" value="<%= form.party_name_kana || '' %>">
+  </label>
+  <label>代表者名
+    <input type="text" name="representative" value="<%= form.representative || '' %>">
+  </label>
+  <label>所在地
+    <input type="text" name="address" value="<%= form.address || '' %>">
+  </label>
+  <label>法人番号
+    <input type="text" name="corporate_number" value="<%= form.corporate_number || '' %>">
+  </label>
+  <label>申請者（必須）
+    <input type="text" name="requested_by" value="<%= form.requested_by || '' %>" required>
+  </label>
+  <button type="submit">登録して一次スクリーニングを実施</button>
+</form>
+
+<%- include('partials/layout_bottom') %>

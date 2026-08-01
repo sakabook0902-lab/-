@@ -1,0 +1,118 @@
+<% title = '案件 #' + check.id + ' | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>チェック案件 #<%= check.id %>：<%= check.party_name %></h1>
+
+<% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
+
+<section class="panel">
+  <h2>取引先情報</h2>
+  <table class="kv">
+    <tr><th>名称</th><td><%= check.party_name %></td></tr>
+    <tr><th>カナ</th><td><%= check.party_name_kana || '-' %></td></tr>
+    <tr><th>代表者</th><td><%= check.representative || '-' %></td></tr>
+    <tr><th>所在地</th><td><%= check.address || '-' %></td></tr>
+    <tr><th>法人番号</th><td><%= check.corporate_number || '-' %></td></tr>
+    <tr><th>申請者</th><td><%= check.requested_by %></td></tr>
+    <tr><th>申請日時</th><td><%= check.created_at %></td></tr>
+  </table>
+</section>
+
+<section class="panel <%= check.blacklist_hit ? 'panel-danger' : '' %>">
+  <h2>① 自動一次スクリーニング（自社ブラックリスト照合）</h2>
+  <% if (check.blacklist_hit) { %>
+    <p class="badge danger">該当あり</p>
+    <p><%= check.blacklist_hit_detail %></p>
+  <% } else { %>
+    <p class="badge ok">該当なし</p>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>② 外部データ照会結果（SafeBiz・官報・都道府県公表情報 等）</h2>
+  <% if (check.external_result) { %>
+    <table class="kv">
+      <tr><th>照会先</th><td><%= check.external_source %></td></tr>
+      <tr><th>結果</th><td><%= check.external_result %></td></tr>
+      <tr><th>備考</th><td><%= check.external_note || '-' %></td></tr>
+      <tr><th>確認者</th><td><%= check.external_checked_by %></td></tr>
+      <tr><th>確認日時</th><td><%= check.external_checked_at %></td></tr>
+    </table>
+  <% } else { %>
+    <form method="post" action="/checks/<%= check.id %>/external" class="form">
+      <label>照会先（必須）
+        <select name="external_source" required>
+          <option value="">選択してください</option>
+          <option value="SafeBiz（アリュクス）">SafeBiz（アリュクス）</option>
+          <option value="官報情報検索サービス">官報情報検索サービス</option>
+          <option value="都道府県公表情報（暴排条例）">都道府県公表情報（暴排条例）</option>
+          <option value="Google検索・報道確認">Google検索・報道確認</option>
+          <option value="その他">その他</option>
+        </select>
+      </label>
+      <label>結果（必須）
+        <select name="external_result" required>
+          <option value="">選択してください</option>
+          <option value="シロ（該当なし）">シロ（該当なし）</option>
+          <option value="要確認">要確認</option>
+          <option value="クロ（該当あり）">クロ（該当あり）</option>
+        </select>
+      </label>
+      <label>備考
+        <textarea name="external_note" rows="3"></textarea>
+      </label>
+      <label>確認者（必須）
+        <input type="text" name="external_checked_by" required>
+      </label>
+      <button type="submit">外部チェック結果を記録</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>③ 最終判定・承認</h2>
+  <% if (check.decision) { %>
+    <table class="kv">
+      <tr><th>判定</th><td><%= check.decision %></td></tr>
+      <tr><th>承認者</th><td><%= check.decided_by %></td></tr>
+      <tr><th>判定日時</th><td><%= check.decided_at %></td></tr>
+      <tr><th>次回再チェック期限</th><td><%= check.next_check_due || '-' %></td></tr>
+    </table>
+  <% } else if (!check.external_result) { %>
+    <p class="hint">先に②の外部データ照会結果を記録してください。</p>
+  <% } else { %>
+    <form method="post" action="/checks/<%= check.id %>/decision" class="form">
+      <label>判定（必須）
+        <select name="decision" required>
+          <option value="">選択してください</option>
+          <option value="承認">承認（取引可）</option>
+          <option value="保留">保留（追加調査が必要）</option>
+          <option value="否認">否認（取引不可）</option>
+        </select>
+      </label>
+      <label>承認者（必須）
+        <input type="text" name="decided_by" required>
+      </label>
+      <button type="submit">判定を確定</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>証跡ログ（監査ログ）</h2>
+  <table class="tbl">
+    <thead><tr><th>日時</th><th>アクション</th><th>実施者</th><th>詳細</th></tr></thead>
+    <tbody>
+      <% logs.forEach(l => { %>
+        <tr>
+          <td><%= l.created_at %></td>
+          <td><%= l.action %></td>
+          <td><%= l.actor %></td>
+          <td><%= l.detail || '-' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>
+
+<%- include('partials/layout_bottom') %>

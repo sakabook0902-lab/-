@@ -1,0 +1,49 @@
+<% title = 'ダッシュボード | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>ダッシュボード</h1>
+
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-num"><%= stats.total %></span><span class="stat-label">総案件数</span></div>
+  <div class="stat-card"><span class="stat-num"><%= stats.pending %></span><span class="stat-label">判定待ち</span></div>
+  <div class="stat-card"><span class="stat-num"><%= stats.approved %></span><span class="stat-label">承認済み</span></div>
+  <div class="stat-card"><span class="stat-num"><%= stats.rejected %></span><span class="stat-label">否認</span></div>
+  <div class="stat-card"><span class="stat-num"><%= stats.hold %></span><span class="stat-label">保留</span></div>
+  <div class="stat-card warn"><span class="stat-num"><%= stats.blacklistHits %></span><span class="stat-label">ブラックリスト該当</span></div>
+  <div class="stat-card <%= stats.overdue > 0 ? 'danger' : '' %>"><span class="stat-num"><%= stats.overdue %></span><span class="stat-label">再チェック期限超過</span></div>
+</div>
+
+<h2>チェック案件一覧</h2>
+<table class="tbl">
+  <thead>
+    <tr>
+      <th>ID</th><th>取引先名称</th><th>申請者</th><th>ブラックリスト</th><th>外部チェック</th><th>判定</th><th>再チェック期限</th><th>申請日時</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% checks.forEach(c => { %>
+      <tr>
+        <td><a href="/checks/<%= c.id %>">#<%= c.id %></a></td>
+        <td><%= c.party_name %></td>
+        <td><%= c.requested_by %></td>
+        <td><% if (c.blacklist_hit) { %><span class="badge danger">該当</span><% } else { %><span class="badge ok">該当なし</span><% } %></td>
+        <td><%= c.external_result || '未実施' %></td>
+        <td>
+          <% if (c.decision === '承認') { %><span class="badge ok">承認</span>
+          <% } else if (c.decision === '否認') { %><span class="badge danger">否認</span>
+          <% } else if (c.decision === '保留') { %><span class="badge warn">保留</span>
+          <% } else { %><span class="badge">未判定</span><% } %>
+        </td>
+        <td class="<%= (c.decision === '承認' && c.next_check_due && c.next_check_due <= today) ? 'danger-text' : '' %>">
+          <%= c.next_check_due || '-' %>
+        </td>
+        <td><%= c.created_at %></td>
+      </tr>
+    <% }) %>
+    <% if (checks.length === 0) { %>
+      <tr><td colspan="8">まだチェック案件がありません。「新規チェック依頼」から登録してください。</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/layout_bottom') %>

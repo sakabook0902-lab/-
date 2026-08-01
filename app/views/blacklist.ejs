@@ -1,0 +1,41 @@
+<% title = 'ブラックリスト管理 | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>自社ブラックリスト管理</h1>
+<p class="hint">過去に取引謝絶・関係解消した先などを登録します。新規チェック依頼登録時に自動で名称照合されます。</p>
+
+<% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
+
+<form method="post" action="/blacklist" class="form">
+  <label>名称（必須）
+    <input type="text" name="name" required>
+  </label>
+  <label>理由
+    <input type="text" name="reason">
+  </label>
+  <label>登録者（必須）
+    <input type="text" name="added_by" required>
+  </label>
+  <button type="submit">登録</button>
+</form>
+
+<h2>登録済み一覧</h2>
+<table class="tbl">
+  <thead><tr><th>ID</th><th>名称</th><th>理由</th><th>登録者</th><th>登録日時</th></tr></thead>
+  <tbody>
+    <% entries.forEach(e => { %>
+      <tr>
+        <td><%= e.id %></td>
+        <td><%= e.name %></td>
+        <td><%= e.reason || '-' %></td>
+        <td><%= e.added_by %></td>
+        <td><%= e.created_at %></td>
+      </tr>
+    <% }) %>
+    <% if (entries.length === 0) { %>
+      <tr><td colspan="5">登録がありません。</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/layout_bottom') %>

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : '反社チェックシステム' %></title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand">反社チェックシステム</a>
+    <nav>
+      <a href="/">ダッシュボード</a>
+      <a href="/checks/new">新規チェック依頼</a>
+      <a href="/rechecks">再チェック期限</a>
+      <a href="/blacklist">ブラックリスト管理</a>
+    </nav>
+  </header>
+  <main class="container">
