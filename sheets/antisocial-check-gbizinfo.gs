@@ -1,14 +1,17 @@
 /**
  * 反社チェック支援スプレッドシート用スクリプト
  *
- * A列に会社名（必要に応じてB列に都道府県）を入力し、メニューから実行すると、
+ * A列に会社名、B列に都道府県を入力すると、メニュー「自動反映を有効にする」を
+ * 一度実行しておくだけで、以後は両方が入力された時点で自動的に
  * gBizINFO（経済産業省の無料API）から
- * 法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を自動取得して
- * 同じ行に書き込みます。年商（売上高）は、有価証券報告書を提出している企業
- * （主に上場企業等）に限り、財務情報として自動取得できます。
+ * 法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を取得して
+ * 同じ行に書き込みます（メニューを毎回選ぶ必要はありません）。
+ * 年商（売上高）は、有価証券報告書を提出している企業（主に上場企業等）に限り、
+ * 財務情報として自動取得できます。
  *
- * 同姓同名の企業が複数ある場合は、B列に都道府県を入れて絞り込むか、
- * 法人番号が分かっていれば「法人番号から直接取得」を使うと確実です。
+ * B列（都道府県）は同姓同名の会社を区別するための絞り込み条件です。
+ * 都道府県を入れても複数社ヒットする場合は、法人番号が分かっていれば
+ * C列に直接入力し「法人番号から直接取得」を使うと確実に1社に絞れます。
  *
  * 連絡先・過去の行政処分の有無は無料の公的APIには存在しないため
  * 自動取得できません。手動確認して入力する欄を用意しています。
@@ -55,12 +58,74 @@ function onOpen() {
     .createMenu('反社チェック支援')
     .addItem('シートの初期設定（見出し作成）', 'setupSheet')
     .addSeparator()
+    .addItem('自動反映を有効にする（A列+B列入力で自動実行）', 'installAutoFillTrigger')
+    .addItem('自動反映を無効にする', 'disableAutoFillTrigger')
+    .addSeparator()
     .addItem('この行を会社名で検索', 'fillSelectedRow')
     .addItem('この行を法人番号から直接取得（最も確実）', 'fillSelectedRowByCorporateNumber')
     .addItem('選択範囲を一括検索（会社名ベース）', 'fillSelectedRange')
     .addSeparator()
     .addItem('gBizINFO APIトークンを設定', 'setApiToken')
     .addToUi();
+}
+
+// --- 自動反映トリガーの有効化・無効化 ---
+// A列（会社名）とB列（都道府県）の両方が入力された行を検知して自動で情報を反映する。
+// UrlFetchApp（外部API呼び出し）を伴うため、単純トリガー(onEdit)ではなく
+// インストール型トリガーとして登録する必要がある（初回のみ権限の承認が必要）。
+function installAutoFillTrigger() {
+  const ui = SpreadsheetApp.getUi();
+  removeAutoFillTrigger_();
+  ScriptApp.newTrigger('onCompanyRowEdit')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onEdit()
+    .create();
+  ui.alert(
+    '自動反映を有効にしました。\n' +
+    '以後、A列（会社名）とB列（都道府県）の両方が入力された行は、自動的に他の列が反映されます。'
+  );
+}
+
+function disableAutoFillTrigger() {
+  removeAutoFillTrigger_();
+  SpreadsheetApp.getUi().alert('自動反映を無効にしました。');
+}
+
+function removeAutoFillTrigger_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'onCompanyRowEdit') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+}
+
+// --- 自動反映トリガー本体 ---
+// A列またはB列が編集された時に発火し、両方揃っていればその行を自動検索する。
+function onCompanyRowEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    const range = e.range;
+    const sheet = range.getSheet();
+    const row = range.getRow();
+    const col = range.getColumn();
+
+    if (row === 1) return; // 見出し行は無視
+    if (col !== COL.NAME && col !== COL.PREFECTURE) return; // 会社名・都道府県以外の編集では発火しない
+
+    const name = sheet.getRange(row, COL.NAME).getValue();
+    const prefecture = sheet.getRange(row, COL.PREFECTURE).getValue();
+    if (!name || !prefecture) return; // 両方揃うまでは何もしない
+
+    sheet.getRange(row, COL.NOTE).setValue('検索中…');
+    try {
+      fillRow_(sheet, row);
+    } catch (err) {
+      sheet.getRange(row, COL.NOTE).setValue('エラー: ' + err.message);
+    }
+  } catch (outerErr) {
+    // トリガー自体の想定外エラーは実行ログにのみ残し、編集操作自体は妨げない
+    console.error(outerErr);
+  }
 }
 
 // --- 初期設定：見出し行の作成、行政処分列のプルダウン設定 ---
@@ -155,6 +220,7 @@ function fetchFinance_(corporateNumber) {
 
 // --- 取得した基本情報をシートに書き込む共通処理 ---
 function writeCompanyInfo_(sheet, row, info) {
+  sheet.getRange(row, COL.NOTE).setValue(''); // 「検索中…」等の一時メッセージをクリア
   sheet.getRange(row, COL.CORPORATE_NUMBER).setValue(info.corporate_number || '');
   sheet.getRange(row, COL.ADDRESS).setValue(info.location || '');
   sheet.getRange(row, COL.REPRESENTATIVE).setValue(info.representative_name || '');
