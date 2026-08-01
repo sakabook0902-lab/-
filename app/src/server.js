@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 function todayStr() {
@@ -211,6 +212,34 @@ app.get('/companies/:corporateNumber', async (req, res) => {
       finance: null,
       error: `取得に失敗しました（${e.message}）`,
     });
+  }
+});
+
+// --- 会社名＋住所から1社に確定できるかを試みる（チェック依頼登録画面の自動反映用API） ---
+app.post('/api/companies/match', async (req, res) => {
+  if (!gbizinfo.isConfigured()) {
+    return res.status(200).json({ status: 'not_configured' });
+  }
+  const { name, address } = req.body || {};
+  if (!name) {
+    return res.status(400).json({ status: 'error', message: '企業名は必須です。' });
+  }
+  try {
+    const result = await gbizinfo.matchByNameAndAddress(name, address);
+    if (result.status === 'matched' && result.company && result.company.corporateNumber) {
+      try {
+        const finance = await gbizinfo.fetchFinance(result.company.corporateNumber);
+        if (finance && finance.length && finance[0].netSales) {
+          result.company.annualRevenue =
+            `${Number(finance[0].netSales).toLocaleString()}円（${finance[0].settlementDate || finance[0].fiscalYear || '決算期不明'}、EDINET）`;
+        }
+      } catch (financeErr) {
+        // 財務情報が取得できない（非上場企業等）場合は無視して基本情報のみ返す
+      }
+    }
+    res.json(result);
+  } catch (e) {
+    res.status(200).json({ status: 'error', message: e.message });
   }
 });
 

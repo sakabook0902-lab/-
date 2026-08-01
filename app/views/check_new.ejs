@@ -13,40 +13,162 @@
 
 <% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
 
-<form method="post" action="/checks/new" class="form">
+<form method="post" action="/checks/new" class="form" id="check-form">
   <label>取引先名称（必須）
-    <input type="text" name="party_name" value="<%= form.party_name || '' %>" required>
+    <input type="text" id="party_name" name="party_name" value="<%= form.party_name || '' %>" required>
   </label>
   <label>取引先名称（カナ）
     <input type="text" name="party_name_kana" value="<%= form.party_name_kana || '' %>">
   </label>
-  <label>代表者名
-    <input type="text" name="representative" value="<%= form.representative || '' %>">
-  </label>
   <label>所在地
-    <input type="text" name="address" value="<%= form.address || '' %>">
+    <input type="text" id="address" name="address" value="<%= form.address || '' %>" placeholder="例）東京都渋谷区渋谷1-2-3">
+  </label>
+
+  <div>
+    <button type="button" id="auto-match-btn">会社名・住所から自動反映</button>
+    <div id="match-status" class="hint" style="margin-top:6px;"></div>
+    <div id="match-candidates"></div>
+  </div>
+
+  <label>代表者名
+    <input type="text" id="representative" name="representative" value="<%= form.representative || '' %>">
   </label>
   <label>法人番号
-    <input type="text" name="corporate_number" value="<%= form.corporate_number || '' %>">
+    <input type="text" id="corporate_number" name="corporate_number" value="<%= form.corporate_number || '' %>">
   </label>
   <label>資本金（円）
-    <input type="number" name="capital" value="<%= form.capital || '' %>">
+    <input type="number" id="capital" name="capital" value="<%= form.capital || '' %>">
   </label>
   <label>従業員数
-    <input type="number" name="employee_count" value="<%= form.employee_count || '' %>">
+    <input type="number" id="employee_count" name="employee_count" value="<%= form.employee_count || '' %>">
   </label>
   <label>業種
-    <input type="text" name="business_category" value="<%= form.business_category || '' %>">
+    <input type="text" id="business_category" name="business_category" value="<%= form.business_category || '' %>">
   </label>
   <label>設立年月日
-    <input type="text" name="established_date" value="<%= form.established_date || '' %>">
+    <input type="text" id="established_date" name="established_date" value="<%= form.established_date || '' %>">
   </label>
-  <input type="hidden" name="registry_source" value="<%= form.registry_source || '' %>">
-  <input type="hidden" name="annual_revenue" value="<%= form.annual_revenue || '' %>">
+  <label>年商（分かれば）
+    <input type="text" id="annual_revenue_visible" value="<%= form.annual_revenue || '' %>" placeholder="自動反映または手動入力">
+  </label>
+  <input type="hidden" id="registry_source" name="registry_source" value="<%= form.registry_source || '' %>">
+  <input type="hidden" id="annual_revenue" name="annual_revenue" value="<%= form.annual_revenue || '' %>">
   <label>申請者（必須）
     <input type="text" name="requested_by" value="<%= form.requested_by || '' %>" required>
   </label>
   <button type="submit">登録して一次スクリーニングを実施</button>
 </form>
+
+<script>
+(function () {
+  var btn = document.getElementById('auto-match-btn');
+  var statusEl = document.getElementById('match-status');
+  var candidatesEl = document.getElementById('match-candidates');
+  var visibleRevenue = document.getElementById('annual_revenue_visible');
+  var hiddenRevenue = document.getElementById('annual_revenue');
+
+  visibleRevenue.addEventListener('input', function () {
+    hiddenRevenue.value = visibleRevenue.value;
+  });
+
+  function fillFrom(company) {
+    document.getElementById('party_name').value = company.name || document.getElementById('party_name').value;
+    document.getElementById('address').value = company.address || document.getElementById('address').value;
+    document.getElementById('representative').value = company.representative || '';
+    document.getElementById('corporate_number').value = company.corporateNumber || '';
+    document.getElementById('capital').value = company.capital || '';
+    document.getElementById('employee_count').value = company.employeeCount || '';
+    document.getElementById('business_category').value = company.businessCategory || '';
+    document.getElementById('established_date').value = company.establishedDate || '';
+    if (company.annualRevenue) {
+      visibleRevenue.value = company.annualRevenue;
+      hiddenRevenue.value = company.annualRevenue;
+    }
+    document.getElementById('registry_source').value = 'gBizINFO（自動反映）';
+    candidatesEl.innerHTML = '';
+    statusEl.innerHTML =
+      '<span class="badge ok">反映しました</span> ' +
+      escapeHtml(company.name || '') + '（法人番号: ' + escapeHtml(company.corporateNumber || '不明') + ' / ' +
+      escapeHtml(company.address || '所在地不明') + '）。内容を確認してから登録してください。';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderCandidates(list, note) {
+    candidatesEl.innerHTML = '';
+    if (note) {
+      var noteEl = document.createElement('p');
+      noteEl.className = 'hint';
+      noteEl.textContent = note;
+      candidatesEl.appendChild(noteEl);
+    }
+    var table = document.createElement('table');
+    table.className = 'tbl';
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>法人番号</th><th>商号</th><th>本社所在地</th><th></th></tr>';
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    list.forEach(function (c) {
+      var tr = document.createElement('tr');
+      var selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.textContent = 'この会社を選択';
+      selectBtn.addEventListener('click', function () { fillFrom(c); });
+      tr.innerHTML =
+        '<td>' + escapeHtml(c.corporateNumber || '-') + '</td>' +
+        '<td>' + escapeHtml(c.name || '-') + '</td>' +
+        '<td>' + escapeHtml(c.address || '-') + '</td>';
+      var td = document.createElement('td');
+      td.appendChild(selectBtn);
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    candidatesEl.appendChild(table);
+  }
+
+  btn.addEventListener('click', function () {
+    var name = document.getElementById('party_name').value.trim();
+    var address = document.getElementById('address').value.trim();
+    if (!name) {
+      statusEl.textContent = '先に取引先名称を入力してください。';
+      return;
+    }
+    statusEl.textContent = '検索中…';
+    candidatesEl.innerHTML = '';
+
+    fetch('/api/companies/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, address: address }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.status === 'not_configured') {
+          statusEl.textContent = 'gBizINFO APIトークンが未設定のため、自動反映は利用できません。手動で入力してください。';
+        } else if (data.status === 'matched') {
+          fillFrom(data.company);
+        } else if (data.status === 'ambiguous') {
+          var note = data.addressMatchFailed
+            ? '入力された住所と一致する候補が見つかりませんでした。名称が一致した候補一覧から選んでください。'
+            : '同名または類似名の候補が複数あります。所在地を見比べて対象企業を選んでください。';
+          statusEl.textContent = data.candidates.length + '件の候補が見つかりました。';
+          renderCandidates(data.candidates, note);
+        } else if (data.status === 'not_found') {
+          statusEl.textContent = '該当する企業が見つかりませんでした。手動で入力してください。';
+        } else {
+          statusEl.textContent = '検索に失敗しました（' + (data.message || '不明なエラー') + '）。手動で入力してください。';
+        }
+      })
+      .catch(function () {
+        statusEl.textContent = '通信に失敗しました。手動で入力してください。';
+      });
+  });
+})();
+</script>
 
 <%- include('partials/layout_bottom') %>

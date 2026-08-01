@@ -65,6 +65,43 @@ async function fetchFinance(corporateNumber) {
   return records;
 }
 
+function normalizeAddressText(addr) {
+  return String(addr || '')
+    .replace(/[\s　]/g, '')
+    .replace(/[−‐‑–—―ー]/g, '-')
+    .replace(/丁目|番地|番|号/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/-$/, '');
+}
+
+// 会社名＋住所で1社に確定できるかを試みる。
+// 住所は表記ゆれ（丁目・番地の書き方、建物名の有無など）があるため、
+// 「どちらかがどちらかを包含する」場合のみ一致とみなす、比較的保守的な判定にしている。
+// 誤って別会社の情報を反映すると反社チェックの記録として重大な問題になるため、
+// 少しでも判定が曖昧な場合（複数候補が残る場合）は自動確定せず、候補一覧を返す。
+async function matchByNameAndAddress(name, address) {
+  const candidates = await search({ name });
+
+  if (!address) {
+    if (candidates.length === 1) return { status: 'matched', company: candidates[0], candidates };
+    if (candidates.length === 0) return { status: 'not_found', candidates: [] };
+    return { status: 'ambiguous', candidates };
+  }
+
+  const na = normalizeAddressText(address);
+  const filtered = candidates.filter((c) => {
+    const ca = normalizeAddressText(c.address);
+    if (!ca || !na) return false;
+    return ca.includes(na) || na.includes(ca);
+  });
+
+  if (filtered.length === 1) return { status: 'matched', company: filtered[0], candidates };
+  if (filtered.length > 1) return { status: 'ambiguous', candidates: filtered };
+  if (candidates.length === 0) return { status: 'not_found', candidates: [] };
+  // 住所で絞り込めなかった場合は、名称一致分をそのまま候補として提示する（自動確定はしない）
+  return { status: 'ambiguous', candidates, addressMatchFailed: true };
+}
+
 // gBizINFOのレスポンスは項目の欠落・命名ゆれがあり得るため、
 // 想定される代表的なキー名をいくつか試しつつ正規化する。
 // 実際のレスポンス項目は取得したトークンで一度実データを確認して調整すること。
@@ -111,4 +148,4 @@ function normalizeFinance(raw) {
   };
 }
 
-module.exports = { isConfigured, search, fetchByCorporateNumber, fetchFinance };
+module.exports = { isConfigured, search, fetchByCorporateNumber, fetchFinance, matchByNameAndAddress };
