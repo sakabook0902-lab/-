@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const db = require('./db');
+const gbizinfo = require('./services/gbizinfo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,7 +60,7 @@ app.get('/', (req, res) => {
 
 // --- New check request ---
 app.get('/checks/new', (req, res) => {
-  res.render('check_new', { error: null, form: {} });
+  res.render('check_new', { error: null, form: req.query || {} });
 });
 
 app.post('/checks/new', (req, res) => {
@@ -69,6 +70,11 @@ app.post('/checks/new', (req, res) => {
     representative,
     address,
     corporate_number,
+    capital,
+    employee_count,
+    business_category,
+    established_date,
+    registry_source,
     requested_by,
   } = req.body;
 
@@ -89,8 +95,10 @@ app.post('/checks/new', (req, res) => {
     .prepare(
       `INSERT INTO checks
         (party_name, party_name_kana, representative, address, corporate_number,
+         capital, employee_count, business_category, established_date,
+         registry_source, registry_looked_up_at,
          requested_by, blacklist_hit, blacklist_hit_detail, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       party_name,
@@ -98,6 +106,12 @@ app.post('/checks/new', (req, res) => {
       representative || null,
       address || null,
       corporate_number || null,
+      capital ? Number(capital) || null : null,
+      employee_count ? Number(employee_count) || null : null,
+      business_category || null,
+      established_date || null,
+      registry_source || null,
+      registry_source ? new Date().toISOString() : null,
       requested_by,
       blacklistHit,
       blacklistDetail,
@@ -113,8 +127,68 @@ app.post('/checks/new', (req, res) => {
       ? `自社ブラックリストに一致: ${blacklistDetail}`
       : '自社ブラックリスト該当なし'
   );
+  if (registry_source) {
+    logAudit(checkId, '企業情報検索の結果を取り込み', requested_by, `取得元: ${registry_source}`);
+  }
 
   res.redirect(`/checks/${checkId}`);
+});
+
+// --- Company lookup (gBizINFO) ---
+app.get('/companies/lookup', (req, res) => {
+  res.render('company_lookup', {
+    configured: gbizinfo.isConfigured(),
+    query: '',
+    results: null,
+    error: null,
+  });
+});
+
+app.post('/companies/lookup', async (req, res) => {
+  const { name } = req.body;
+  if (!gbizinfo.isConfigured()) {
+    return res.render('company_lookup', {
+      configured: false,
+      query: name || '',
+      results: null,
+      error: null,
+    });
+  }
+  if (!name) {
+    return res.render('company_lookup', {
+      configured: true,
+      query: '',
+      results: null,
+      error: '企業名を入力してください。',
+    });
+  }
+  try {
+    const results = await gbizinfo.searchByName(name);
+    res.render('company_lookup', { configured: true, query: name, results, error: null });
+  } catch (e) {
+    res.render('company_lookup', {
+      configured: true,
+      query: name,
+      results: null,
+      error: `検索に失敗しました（${e.message}）`,
+    });
+  }
+});
+
+app.get('/companies/:corporateNumber', async (req, res) => {
+  if (!gbizinfo.isConfigured()) {
+    return res.render('company_detail', { configured: false, company: null, error: null });
+  }
+  try {
+    const company = await gbizinfo.fetchByCorporateNumber(req.params.corporateNumber);
+    res.render('company_detail', { configured: true, company, error: null });
+  } catch (e) {
+    res.render('company_detail', {
+      configured: true,
+      company: null,
+      error: `取得に失敗しました（${e.message}）`,
+    });
+  }
 });
 
 // --- Check detail ---
@@ -157,6 +231,57 @@ app.post('/checks/:id/external', (req, res) => {
     '外部データ照会結果を記録',
     external_checked_by,
     `照会先: ${external_source} / 結果: ${external_result}${external_note ? ' / 備考: ' + external_note : ''}`
+  );
+
+  res.redirect(`/checks/${check.id}`);
+});
+
+// --- Record manually-verified attributes (年商・連絡先・行政処分の有無) ---
+app.post('/checks/:id/company-attributes', (req, res) => {
+  const check = db.prepare(`SELECT * FROM checks WHERE id = ?`).get(req.params.id);
+  if (!check) return res.status(404).send('チェック案件が見つかりません。');
+
+  const {
+    annual_revenue,
+    contact_phone,
+    admin_sanction_status,
+    admin_sanction_note,
+    admin_sanction_checked_by,
+  } = req.body;
+
+  if (!admin_sanction_status || !admin_sanction_checked_by) {
+    const logs = db
+      .prepare(`SELECT * FROM audit_logs WHERE check_id = ? ORDER BY created_at ASC`)
+      .all(check.id);
+    return res.render('check_detail', {
+      check,
+      logs,
+      error: '行政処分の有無・確認者は必須です。',
+    });
+  }
+
+  db.prepare(
+    `UPDATE checks SET
+       annual_revenue = ?, contact_phone = ?,
+       admin_sanction_status = ?, admin_sanction_note = ?,
+       admin_sanction_checked_by = ?, admin_sanction_checked_at = datetime('now','localtime'),
+       updated_at = datetime('now','localtime')
+     WHERE id = ?`
+  ).run(
+    annual_revenue || null,
+    contact_phone || null,
+    admin_sanction_status,
+    admin_sanction_note || null,
+    admin_sanction_checked_by,
+    check.id
+  );
+
+  logAudit(
+    check.id,
+    '企業属性・行政処分の有無を手動確認',
+    admin_sanction_checked_by,
+    `行政処分: ${admin_sanction_status}${admin_sanction_note ? ' / 備考: ' + admin_sanction_note : ''}` +
+      `${annual_revenue ? ` / 年商: ${annual_revenue}` : ''}${contact_phone ? ` / 連絡先: ${contact_phone}` : ''}`
   );
 
   res.redirect(`/checks/${check.id}`);

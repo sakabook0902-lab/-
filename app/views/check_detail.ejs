@@ -13,6 +13,11 @@
     <tr><th>代表者</th><td><%= check.representative || '-' %></td></tr>
     <tr><th>所在地</th><td><%= check.address || '-' %></td></tr>
     <tr><th>法人番号</th><td><%= check.corporate_number || '-' %></td></tr>
+    <tr><th>資本金</th><td><%= check.capital ? Number(check.capital).toLocaleString() + ' 円' : '-' %></td></tr>
+    <tr><th>従業員数</th><td><%= check.employee_count ? Number(check.employee_count).toLocaleString() + ' 人' : '-' %></td></tr>
+    <tr><th>業種</th><td><%= check.business_category || '-' %></td></tr>
+    <tr><th>設立年月日</th><td><%= check.established_date || '-' %></td></tr>
+    <tr><th>企業情報の取得元</th><td><%= check.registry_source || '未取得（企業情報検索から作成すると自動入力されます）' %></td></tr>
     <tr><th>申請者</th><td><%= check.requested_by %></td></tr>
     <tr><th>申請日時</th><td><%= check.created_at %></td></tr>
   </table>
@@ -29,7 +34,50 @@
 </section>
 
 <section class="panel">
-  <h2>② 外部データ照会結果（SafeBiz・官報・都道府県公表情報 等）</h2>
+  <h2>② 年商・連絡先・行政処分の有無（手動確認項目）</h2>
+  <p class="hint">これらはgBizINFO等の無料の公的APIでは自動取得できません。EDINET・各省庁の行政処分公表ページ・SafeBiz等で確認のうえ記録してください。</p>
+  <% if (check.admin_sanction_status) { %>
+    <table class="kv">
+      <tr><th>年商</th><td><%= check.annual_revenue || '未確認' %></td></tr>
+      <tr><th>連絡先</th><td><%= check.contact_phone || '未確認' %></td></tr>
+      <tr><th>行政処分の有無</th><td>
+        <% if (check.admin_sanction_status === 'あり') { %><span class="badge danger">あり</span>
+        <% } else if (check.admin_sanction_status === 'なし') { %><span class="badge ok">なし</span>
+        <% } else { %><span class="badge warn">未確認</span><% } %>
+      </td></tr>
+      <tr><th>備考</th><td><%= check.admin_sanction_note || '-' %></td></tr>
+      <tr><th>確認者</th><td><%= check.admin_sanction_checked_by %></td></tr>
+      <tr><th>確認日時</th><td><%= check.admin_sanction_checked_at %></td></tr>
+    </table>
+  <% } else { %>
+    <form method="post" action="/checks/<%= check.id %>/company-attributes" class="form">
+      <label>年商（分かる範囲で。任意）
+        <input type="text" name="annual_revenue" placeholder="例）約5億円（20XX年度、EDINET確認）">
+      </label>
+      <label>連絡先（任意）
+        <input type="text" name="contact_phone" placeholder="例）03-XXXX-XXXX（公式サイト記載）">
+      </label>
+      <label>行政処分の有無（必須）
+        <select name="admin_sanction_status" required>
+          <option value="">選択してください</option>
+          <option value="なし">なし</option>
+          <option value="あり">あり</option>
+          <option value="未確認">未確認（保留）</option>
+        </select>
+      </label>
+      <label>備考（確認先・処分内容等）
+        <textarea name="admin_sanction_note" rows="3"></textarea>
+      </label>
+      <label>確認者（必須）
+        <input type="text" name="admin_sanction_checked_by" required>
+      </label>
+      <button type="submit">記録する</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>③ 外部データ照会結果（SafeBiz・官報・都道府県公表情報 等）</h2>
   <% if (check.external_result) { %>
     <table class="kv">
       <tr><th>照会先</th><td><%= check.external_source %></td></tr>
@@ -70,7 +118,7 @@
 </section>
 
 <section class="panel">
-  <h2>③ 最終判定・承認</h2>
+  <h2>④ 最終判定・承認</h2>
   <% if (check.decision) { %>
     <table class="kv">
       <tr><th>判定</th><td><%= check.decision %></td></tr>
@@ -79,7 +127,7 @@
       <tr><th>次回再チェック期限</th><td><%= check.next_check_due || '-' %></td></tr>
     </table>
   <% } else if (!check.external_result) { %>
-    <p class="hint">先に②の外部データ照会結果を記録してください。</p>
+    <p class="hint">先に③の外部データ照会結果を記録してください。</p>
   <% } else { %>
     <form method="post" action="/checks/<%= check.id %>/decision" class="form">
       <label>判定（必須）

@@ -3,6 +3,13 @@
 
 <h1>新規チェック依頼</h1>
 <p class="hint">登録すると、自社ブラックリストとの自動一次照合が実施されます。外部データ（SafeBiz等）の照会結果は、次の画面で担当者が記録してください。</p>
+<p class="hint"><a href="/companies/lookup">企業情報検索</a>から企業を選んで作成すると、法人番号・所在地・代表者・資本金・従業員数・業種を自動入力できます。</p>
+
+<% if (form.registry_source) { %>
+  <div class="alert" style="background:#eff6ff; border-color:#2563eb; color:#1d4ed8;">
+    「<%= form.registry_source %>」から取得した情報が入力されています。内容を確認のうえ登録してください。
+  </div>
+<% } %>
 
 <% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
 
@@ -22,6 +29,19 @@
   <label>法人番号
     <input type="text" name="corporate_number" value="<%= form.corporate_number || '' %>">
   </label>
+  <label>資本金（円）
+    <input type="number" name="capital" value="<%= form.capital || '' %>">
+  </label>
+  <label>従業員数
+    <input type="number" name="employee_count" value="<%= form.employee_count || '' %>">
+  </label>
+  <label>業種
+    <input type="text" name="business_category" value="<%= form.business_category || '' %>">
+  </label>
+  <label>設立年月日
+    <input type="text" name="established_date" value="<%= form.established_date || '' %>">
+  </label>
+  <input type="hidden" name="registry_source" value="<%= form.registry_source || '' %>">
   <label>申請者（必須）
     <input type="text" name="requested_by" value="<%= form.requested_by || '' %>" required>
   </label>

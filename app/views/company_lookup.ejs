@@ -1,0 +1,50 @@
+<% title = '企業情報検索 | 反社チェックシステム' %>
+<%- include('partials/layout_top') %>
+
+<h1>企業情報検索</h1>
+<p class="hint">
+  企業名を入力すると、経済産業省が提供する無料の法人情報API「<strong>gBizINFO</strong>」から
+  法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を自動取得します。<br>
+  <strong>年商（売上高）・連絡先・過去の行政処分の有無は、gBizINFOを含む無料の公的APIには存在しないため自動取得できません。</strong>
+  該当企業の詳細画面で、確認先リンクを案内した上で手動記録する形になります。
+</p>
+
+<% if (!configured) { %>
+  <div class="alert">
+    gBizINFO APIトークンが未設定のため、この機能は利用できません。<br>
+    <a href="https://info.gbiz.go.jp/hojin/APIManual" target="_blank" rel="noopener">https://info.gbiz.go.jp/hojin/APIManual</a>
+    から無料のAPIトークンを取得し、サーバー起動時に環境変数 <code>GBIZINFO_API_TOKEN</code> を設定してください（詳細はREADME参照）。
+  </div>
+<% } else { %>
+
+  <% if (error) { %><div class="alert">エラー: <%= error %></div><% } %>
+
+  <form method="post" action="/companies/lookup" class="form">
+    <label>企業名
+      <input type="text" name="name" value="<%= query %>" placeholder="例）株式会社サンプル商事" required>
+    </label>
+    <button type="submit">検索</button>
+  </form>
+
+  <% if (results) { %>
+    <h2>検索結果（<%= results.length %>件）</h2>
+    <table class="tbl">
+      <thead><tr><th>法人番号</th><th>商号</th><th>本社所在地</th><th></th></tr></thead>
+      <tbody>
+        <% results.forEach(r => { %>
+          <tr>
+            <td><%= r.corporateNumber || '-' %></td>
+            <td><%= r.name || '-' %></td>
+            <td><%= r.address || '-' %></td>
+            <td><a href="/companies/<%= r.corporateNumber %>">詳細を見る</a></td>
+          </tr>
+        <% }) %>
+        <% if (results.length === 0) { %>
+          <tr><td colspan="4">該当する企業が見つかりませんでした。</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } %>
+<% } %>
+
+<%- include('partials/layout_bottom') %>
