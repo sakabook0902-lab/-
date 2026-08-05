@@ -71,7 +71,36 @@ function onOpen() {
     .addItem('選択範囲を一括検索（会社名ベース）', 'fillSelectedRange')
     .addSeparator()
     .addItem('gBizINFO APIトークンを設定', 'setApiToken')
+    .addSeparator()
+    .addItem('デバッグ: 選択行の生データをT列に出力', 'debugShowRawData')
     .addToUi();
+}
+
+// --- デバッグ用：gBizINFOの生レスポンスをそのままT列に書き出す ---
+// 代表者・資本金・従業員数・業種・設立年月日等が空欄になる場合、
+// 項目名の推測(representative_name等)が実際のAPIレスポンスと違っている可能性が高い。
+// このデバッグ出力の内容を確認すれば、正しい項目名が分かる。
+function debugShowRawData() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const row = sheet.getActiveCell().getRow();
+  if (row === 1) {
+    ui.alert('見出し行(1行目)は選択しないでください。');
+    return;
+  }
+  const corporateNumber = sheet.getRange(row, COL.CORPORATE_NUMBER).getValue();
+  if (!corporateNumber) {
+    ui.alert('C列（法人番号）が空です。先に検索を実行して法人番号を取得してから、もう一度お試しください。');
+    return;
+  }
+  try {
+    const url = 'https://info.gbiz.go.jp/hojin/v1/hojin/' + encodeURIComponent(String(corporateNumber).trim());
+    const data = callGbizInfo_(url);
+    sheet.getRange(row, 20).setValue(JSON.stringify(data)); // T列(20列目)に生データを書き出す
+    ui.alert('T列に生データを書き出しました。そのセルをクリックし、内容を全部コピーして共有してください。');
+  } catch (e) {
+    ui.alert('取得に失敗しました: ' + e.message);
+  }
 }
 
 // --- 自動反映トリガーの有効化・無効化 ---
