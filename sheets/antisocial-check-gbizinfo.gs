@@ -190,17 +190,33 @@ function callGbizInfo_(url) {
   return JSON.parse(response.getContentText());
 }
 
+// B列には「群馬県」のような都道府県名だけでなく、「群馬県前橋市...」のような
+// 住所全体が入力されるケースが多いため、先頭が都道府県名と一致すれば認識する。
+function extractPrefectureCode_(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  for (const pref in PREFECTURE_CODES) {
+    if (t.indexOf(pref) === 0) return PREFECTURE_CODES[pref];
+  }
+  return null;
+}
+
 // --- 会社名（＋都道府県）で検索。同名の別会社と区別するため都道府県での絞り込みに対応 ---
 function searchCompanyByName_(name, prefectureName) {
   let url = 'https://info.gbiz.go.jp/hojin/v1/hojin?name=' + encodeURIComponent(name);
-  if (prefectureName) {
-    const code = PREFECTURE_CODES[String(prefectureName).trim()];
-    if (code) url += '&prefecture=' + code;
-  }
+  const code = extractPrefectureCode_(prefectureName);
+  if (code) url += '&prefecture=' + code;
+
   const data = callGbizInfo_(url);
   const list = data['hojin-infos'] || [];
   if (list.length > 1) {
-    throw new Error(list.length + '件ヒットしました。B列に都道府県を入力するか、法人番号での直接取得を使ってください。');
+    if (!code) {
+      throw new Error(
+        list.length + '件ヒットしました。B列の「' + prefectureName + '」から都道府県を認識できませんでした。' +
+        '都道府県名（例：群馬県）で始まる形で入力するか、法人番号での直接取得を使ってください。'
+      );
+    }
+    throw new Error(list.length + '件ヒットしました（都道府県で絞り込み済み）。法人番号での直接取得を使ってください。');
   }
   return list.length ? list[0] : null;
 }
