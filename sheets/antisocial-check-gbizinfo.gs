@@ -349,17 +349,26 @@ function hyperlinkFormula_(url, label) {
   return '=HYPERLINK("' + esc(url) + '","' + esc(label) + '")';
 }
 
+// gBizINFOから値が取得できた場合のみセルを上書きする。
+// 値が空の場合は何もしない＝既存のセルの内容（手動で入力した情報等）を
+// 消さずに残す。これにより、自動反映を繰り返し実行しても、一度手動で
+// 埋めた情報が空文字で上書き消去されることがなくなる。
+function setIfPresent_(sheet, row, col, value) {
+  if (value === null || value === undefined || value === '') return;
+  sheet.getRange(row, col).setValue(value);
+}
+
 // --- 取得した基本情報をシートに書き込む共通処理 ---
 function writeCompanyInfo_(sheet, row, info) {
   const notes = []; // このあと複数箇所で注記が発生しうるため、最後にまとめてN列へ書き込む
 
-  sheet.getRange(row, COL.CORPORATE_NUMBER).setValue(info.corporate_number || '');
-  sheet.getRange(row, COL.ADDRESS).setValue(info.location || '');
-  sheet.getRange(row, COL.REPRESENTATIVE).setValue(info.representative_name || '');
-  sheet.getRange(row, COL.CAPITAL).setValue(info.capital_stock || '');
-  sheet.getRange(row, COL.EMPLOYEE_COUNT).setValue(info.employee_number || '');
-  sheet.getRange(row, COL.BUSINESS_CATEGORY).setValue(info.business_summary || '');
-  sheet.getRange(row, COL.ESTABLISHED_DATE).setValue(info.date_of_establishment || '');
+  setIfPresent_(sheet, row, COL.CORPORATE_NUMBER, info.corporate_number);
+  setIfPresent_(sheet, row, COL.ADDRESS, info.location);
+  setIfPresent_(sheet, row, COL.REPRESENTATIVE, info.representative_name);
+  setIfPresent_(sheet, row, COL.CAPITAL, info.capital_stock);
+  setIfPresent_(sheet, row, COL.EMPLOYEE_COUNT, info.employee_number);
+  setIfPresent_(sheet, row, COL.BUSINESS_CATEGORY, info.business_summary);
+  setIfPresent_(sheet, row, COL.ESTABLISHED_DATE, info.date_of_establishment);
   sheet.getRange(row, COL.LOOKED_UP_AT).setValue(new Date());
 
   // 代表者・資本金・設立年月日は、gBizINFO側にそもそもデータが登録されていない
