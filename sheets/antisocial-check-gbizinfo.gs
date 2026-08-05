@@ -1,7 +1,7 @@
 /**
  * 反社チェック支援スプレッドシート用スクリプト
  *
- * A列に会社名、B列に都道府県を入力すると、メニュー「自動反映を有効にする」を
+ * A列に会社名、B列に都道府県または住所を入力すると、メニュー「自動反映を有効にする」を
  * 一度実行しておくだけで、以後は両方が入力された時点で自動的に
  * gBizINFO（経済産業省の無料API）から
  * 法人番号・本社所在地・代表者・資本金・従業員数・業種・設立年月日を取得して
@@ -9,8 +9,9 @@
  * 年商（売上高）は、有価証券報告書を提出している企業（主に上場企業等）に限り、
  * 財務情報として自動取得できます。
  *
- * B列（都道府県）は同姓同名の会社を区別するための絞り込み条件です。
- * 都道府県を入れても複数社ヒットする場合は、法人番号が分かっていれば
+ * B列（都道府県・住所）は同姓同名の会社を区別するための絞り込み条件です。都道府県名だけでなく
+ * 住所全体を入力すると、会社名検索で複数ヒットした場合に住所同士を突き合わせて1社に確定します。
+ * それでも複数社残る場合は、法人番号が分かっていれば
  * C列に直接入力し「法人番号から直接取得」を使うと確実に1社に絞れます。
  *
  * 連絡先・過去の行政処分の有無は無料の公的APIには存在しないため
@@ -19,7 +20,7 @@
 
 const COL = {
   NAME: 1,               // A: 会社名（入力）
-  PREFECTURE: 2,          // B: 都道府県（絞り込み・任意入力、都道府県名でOK）
+  PREFECTURE: 2,          // B: 都道府県・住所（絞り込み・任意入力。都道府県名だけでも住所全体でもOK）
   CORPORATE_NUMBER: 3,    // C: 法人番号（分かっていれば直接入力してもよい）
   ADDRESS: 4,              // D: 本社所在地
   REPRESENTATIVE: 5,      // E: 代表者
@@ -39,7 +40,7 @@ const COL = {
 };
 
 const HEADERS = [
-  '会社名（入力）', '都道府県（絞り込み・任意）', '法人番号', '本社所在地', '代表者',
+  '会社名（入力）', '都道府県・住所（絞り込み・任意）', '法人番号', '本社所在地', '代表者',
   '資本金', '従業員数', '業種', '設立年月日',
   '年商（自動・上場企業等のみ）', '年商（手動確認）', '連絡先（手動確認）',
   '行政処分の有無（手動確認）', '備考', '情報取得日時',
@@ -74,7 +75,7 @@ function onOpen() {
 }
 
 // --- 自動反映トリガーの有効化・無効化 ---
-// A列（会社名）とB列（都道府県）の両方が入力された行を検知して自動で情報を反映する。
+// A列（会社名）とB列（都道府県・住所）の両方が入力された行を検知して自動で情報を反映する。
 // UrlFetchApp（外部API呼び出し）を伴うため、単純トリガー(onEdit)ではなく
 // インストール型トリガーとして登録する必要がある（初回のみ権限の承認が必要）。
 function installAutoFillTrigger() {
@@ -86,7 +87,7 @@ function installAutoFillTrigger() {
     .create();
   ui.alert(
     '自動反映を有効にしました。\n' +
-    '以後、A列（会社名）とB列（都道府県）の両方が入力された行は、自動的に他の列が反映されます。'
+    '以後、A列（会社名）とB列（都道府県・住所）の両方が入力された行は、自動的に他の列が反映されます。'
   );
 }
 
@@ -114,11 +115,11 @@ function onCompanyRowEdit(e) {
     const col = range.getColumn();
 
     if (row === 1) return; // 見出し行は無視
-    if (col !== COL.NAME && col !== COL.PREFECTURE) return; // 会社名・都道府県以外の編集では発火しない
+    if (col !== COL.NAME && col !== COL.PREFECTURE) return; // 会社名・都道府県/住所以外の編集では発火しない
 
     const name = sheet.getRange(row, COL.NAME).getValue();
-    const prefecture = sheet.getRange(row, COL.PREFECTURE).getValue();
-    if (!name || !prefecture) return; // 両方揃うまでは何もしない
+    const address = sheet.getRange(row, COL.PREFECTURE).getValue();
+    if (!name || !address) return; // 両方揃うまでは何もしない
 
     sheet.getRange(row, COL.NOTE).setValue('検索中…');
     try {
@@ -147,7 +148,8 @@ function setupSheet() {
   sheet.getRange(2, COL.SANCTION_STATUS, 500, 1).setDataValidation(rule);
 
   SpreadsheetApp.getUi().alert(
-    'A列に会社名、任意でB列に都道府県（例：東京都）を入力してください。\n' +
+    'A列に会社名、任意でB列に都道府県または住所（例：群馬県前橋市...）を入力してください。\n' +
+    '住所まで入力すると、同名の別会社との区別がより確実になります。\n' +
     '法人番号が分かっている場合はC列に直接入力し、「法人番号から直接取得」を使うと最も確実です。'
   );
 }
@@ -192,6 +194,7 @@ function callGbizInfo_(url) {
 
 // B列には「群馬県」のような都道府県名だけでなく、「群馬県前橋市...」のような
 // 住所全体が入力されるケースが多いため、先頭が都道府県名と一致すれば認識する。
+// APIへの問い合わせを都道府県単位で粗く絞り込むための一次フィルタとして使う。
 function extractPrefectureCode_(text) {
   const t = String(text || '').trim();
   if (!t) return null;
@@ -201,24 +204,58 @@ function extractPrefectureCode_(text) {
   return null;
 }
 
-// --- 会社名（＋都道府県）で検索。同名の別会社と区別するため都道府県での絞り込みに対応 ---
-function searchCompanyByName_(name, prefectureName) {
+// 住所の表記ゆれ（丁目・番地の書き方、スペースの有無、全角/半角ハイフン等）を
+// 吸収するための簡易正規化。完全一致ではなく「どちらかがどちらかを含む」形で
+// 比較することで、多少の表記差があっても一致とみなせるようにする。
+function normalizeAddressText_(addr) {
+  return String(addr || '')
+    .replace(/[\s　]/g, '')
+    .replace(/[−‐‑–—―ー]/g, '-')
+    .replace(/丁目|番地|番|号/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/-$/, '');
+}
+
+function addressesMatch_(a, b) {
+  const na = normalizeAddressText_(a);
+  const nb = normalizeAddressText_(b);
+  if (!na || !nb) return false;
+  return na.indexOf(nb) !== -1 || nb.indexOf(na) !== -1;
+}
+
+// --- 会社名＋住所で1社に確定できるかを試みる ---
+// 1. まず会社名＋都道府県（住所の先頭から抽出）でAPIに問い合わせて候補を絞る
+// 2. それでも複数残る場合は、B列の住所文字列と各候補の本社所在地を突き合わせて
+//    1社に確定できるかを試みる（誤って別会社の情報を使わないよう、確定できない
+//    場合は自動確定せず、法人番号での直接取得を案内する）
+function searchCompanyByName_(name, address) {
+  const prefectureCode = extractPrefectureCode_(address);
   let url = 'https://info.gbiz.go.jp/hojin/v1/hojin?name=' + encodeURIComponent(name);
-  const code = extractPrefectureCode_(prefectureName);
-  if (code) url += '&prefecture=' + code;
+  if (prefectureCode) url += '&prefecture=' + prefectureCode;
 
   const data = callGbizInfo_(url);
   const list = data['hojin-infos'] || [];
-  if (list.length > 1) {
-    if (!code) {
+
+  if (list.length === 0) return null;
+  if (list.length === 1) return list[0];
+
+  // 複数ヒットした場合は、B列の住所とAPI側の所在地(location)を突き合わせて絞り込む
+  if (address) {
+    const filtered = list.filter(function (c) {
+      return addressesMatch_(address, c.location);
+    });
+    if (filtered.length === 1) return filtered[0];
+    if (filtered.length > 1) {
       throw new Error(
-        list.length + '件ヒットしました。B列の「' + prefectureName + '」から都道府県を認識できませんでした。' +
-        '都道府県名（例：群馬県）で始まる形で入力するか、法人番号での直接取得を使ってください。'
+        filtered.length + '件が住所でも一致し、1社に確定できませんでした。法人番号での直接取得を使ってください。'
       );
     }
-    throw new Error(list.length + '件ヒットしました（都道府県で絞り込み済み）。法人番号での直接取得を使ってください。');
   }
-  return list.length ? list[0] : null;
+
+  throw new Error(
+    list.length + '件ヒットしましたが、B列の住所と一致する候補が見つかりませんでした。' +
+    '住所の表記（市区町村・番地）を見直すか、法人番号での直接取得を使ってください。'
+  );
 }
 
 // --- 法人番号を直接指定して1社を取得（最も確実） ---
@@ -290,13 +327,13 @@ function writeCompanyInfo_(sheet, row, info) {
   }
 }
 
-// --- 1行分：会社名（＋都道府県）で検索して書き込む ---
+// --- 1行分：会社名（＋都道府県・住所）で検索して書き込む ---
 function fillRow_(sheet, row) {
   const name = sheet.getRange(row, COL.NAME).getValue();
   if (!name) return;
-  const prefecture = sheet.getRange(row, COL.PREFECTURE).getValue();
+  const address = sheet.getRange(row, COL.PREFECTURE).getValue();
 
-  const info = searchCompanyByName_(String(name), prefecture);
+  const info = searchCompanyByName_(String(name), address);
   if (!info) {
     sheet.getRange(row, COL.NOTE).setValue('該当なし（gBizINFO未登録、または表記ゆれの可能性。正式名称で再検索してください）');
     return;
