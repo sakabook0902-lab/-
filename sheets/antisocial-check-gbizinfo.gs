@@ -223,6 +223,18 @@ function addressesMatch_(a, b) {
   return na.indexOf(nb) !== -1 || nb.indexOf(na) !== -1;
 }
 
+// エラーメッセージに候補の実際の法人番号・所在地を列挙する。
+// これにより、住所の突き合わせがなぜ失敗したか（表記の違い等）をN列の表示だけで
+// 確認でき、そのまま該当の法人番号を「法人番号での直接取得」に使うこともできる。
+function formatCandidates_(list) {
+  return list
+    .map(function (c) {
+      return (c.name || '(名称不明)') + '｜法人番号:' + (c.corporate_number || '不明') +
+        '｜所在地:' + (c.location || '不明');
+    })
+    .join(' / ');
+}
+
 // --- 会社名＋住所で1社に確定できるかを試みる ---
 // 1. まず会社名＋都道府県（住所の先頭から抽出）でAPIに問い合わせて候補を絞る
 // 2. それでも複数残る場合は、B列の住所文字列と各候補の本社所在地を突き合わせて
@@ -247,14 +259,15 @@ function searchCompanyByName_(name, address) {
     if (filtered.length === 1) return filtered[0];
     if (filtered.length > 1) {
       throw new Error(
-        filtered.length + '件が住所でも一致し、1社に確定できませんでした。法人番号での直接取得を使ってください。'
+        filtered.length + '件が住所でも一致し、1社に確定できませんでした。候補: ' +
+        formatCandidates_(filtered) + ' ／ 該当する法人番号をC列に入力し「法人番号での直接取得」を使ってください。'
       );
     }
   }
 
   throw new Error(
-    list.length + '件ヒットしましたが、B列の住所と一致する候補が見つかりませんでした。' +
-    '住所の表記（市区町村・番地）を見直すか、法人番号での直接取得を使ってください。'
+    list.length + '件ヒットしましたが、B列の住所（' + address + '）と一致する候補が見つかりませんでした。候補: ' +
+    formatCandidates_(list) + ' ／ 該当する法人番号をC列に入力し「法人番号での直接取得」を使ってください。'
   );
 }
 
