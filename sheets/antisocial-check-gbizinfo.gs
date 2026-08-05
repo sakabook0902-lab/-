@@ -351,7 +351,8 @@ function hyperlinkFormula_(url, label) {
 
 // --- 取得した基本情報をシートに書き込む共通処理 ---
 function writeCompanyInfo_(sheet, row, info) {
-  sheet.getRange(row, COL.NOTE).setValue(''); // 「検索中…」等の一時メッセージをクリア
+  const notes = []; // このあと複数箇所で注記が発生しうるため、最後にまとめてN列へ書き込む
+
   sheet.getRange(row, COL.CORPORATE_NUMBER).setValue(info.corporate_number || '');
   sheet.getRange(row, COL.ADDRESS).setValue(info.location || '');
   sheet.getRange(row, COL.REPRESENTATIVE).setValue(info.representative_name || '');
@@ -360,6 +361,17 @@ function writeCompanyInfo_(sheet, row, info) {
   sheet.getRange(row, COL.BUSINESS_CATEGORY).setValue(info.business_summary || '');
   sheet.getRange(row, COL.ESTABLISHED_DATE).setValue(info.date_of_establishment || '');
   sheet.getRange(row, COL.LOOKED_UP_AT).setValue(new Date());
+
+  // 代表者・資本金・設立年月日は、gBizINFO側にそもそもデータが登録されていない
+  // 企業が多い（特に届出・補助金申請等の実績がない中小企業）。空欄の場合は
+  // 項目名の間違いではなくデータ未登録であることが分かるよう注記する。
+  const missingBasics = [];
+  if (!info.representative_name) missingBasics.push('代表者');
+  if (!info.capital_stock) missingBasics.push('資本金');
+  if (!info.date_of_establishment) missingBasics.push('設立年月日');
+  if (missingBasics.length) {
+    notes.push('gBizINFOに未登録: ' + missingBasics.join('・'));
+  }
 
   // 会社名・法人番号から機械的に生成できるリンク。
   // 「関連ニュース」「公式サイト」は無料の公的APIには存在しないため実際の記事内容までは取得できず、
@@ -387,11 +399,13 @@ function writeCompanyInfo_(sheet, row, info) {
       sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue(finance.net_sales_summary_of_business_results);
     } else {
       sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue('');
-      sheet.getRange(row, COL.NOTE).setValue('財務情報なし（非上場企業等。年商はK列に手動で確認結果を入力してください）');
+      notes.push('財務情報(年商)なし。K列に手動で確認結果を入力してください');
     }
   } catch (e) {
     sheet.getRange(row, COL.ANNUAL_REVENUE_AUTO).setValue('');
   }
+
+  sheet.getRange(row, COL.NOTE).setValue(notes.join(' / '));
 }
 
 // --- 1行分：会社名（＋都道府県・住所）で検索して書き込む ---
