@@ -96,8 +96,25 @@ function debugShowRawData() {
   try {
     const url = 'https://info.gbiz.go.jp/hojin/v1/hojin/' + encodeURIComponent(String(corporateNumber).trim());
     const data = callGbizInfo_(url);
-    sheet.getRange(row, 20).setValue(JSON.stringify(data)); // T列(20列目)に生データを書き出す
-    ui.alert('T列に生データを書き出しました。そのセルをクリックし、内容を全部コピーして共有してください。');
+    const list = data['hojin-infos'] || [];
+    if (!list.length) {
+      ui.alert('データが空でした。');
+      return;
+    }
+    const info = list[0];
+    // 全文だと長すぎるため、まず「項目名一覧」をT列に、「代表者/資本金/従業員数/
+    // 業種/設立日っぽい項目の値」をU列に出力する（値に手がかりとなる項目名を含むキーを抽出）
+    const keys = Object.keys(info).sort();
+    sheet.getRange(row, 20).setValue(keys.join(', ')); // T列: 項目名一覧
+
+    const hintPattern = /represent|capital|employee|business|item|establish|found|date|kana/i;
+    const hints = keys
+      .filter(function (k) { return hintPattern.test(k); })
+      .map(function (k) { return k + '=' + JSON.stringify(info[k]); })
+      .join(' / ');
+    sheet.getRange(row, 21).setValue(hints); // U列: それっぽい項目の値
+
+    ui.alert('T列に項目名一覧、U列に候補項目の値を書き出しました。両方の内容をコピーして共有してください。');
   } catch (e) {
     ui.alert('取得に失敗しました: ' + e.message);
   }
