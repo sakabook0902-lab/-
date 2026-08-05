@@ -204,13 +204,21 @@ function extractPrefectureCode_(text) {
   return null;
 }
 
-// 住所の表記ゆれ（丁目・番地の書き方、スペースの有無、全角/半角ハイフン等）を
+// 全角英数字を半角に変換する（gBizINFO側の住所が「３－１８－１５」のように
+// 全角数字・全角ハイフンで格納されているケースがあり、これを吸収するために必要）。
+function toHalfWidth_(s) {
+  return String(s || '').replace(/[０-９Ａ-Ｚａ-ｚ]/g, function (c) {
+    return String.fromCharCode(c.charCodeAt(0) - 0xfee0);
+  });
+}
+
+// 住所の表記ゆれ（全角/半角数字、丁目・番地の書き方、スペース、各種ハイフンの違い等）を
 // 吸収するための簡易正規化。完全一致ではなく「どちらかがどちらかを含む」形で
 // 比較することで、多少の表記差があっても一致とみなせるようにする。
 function normalizeAddressText_(addr) {
-  return String(addr || '')
+  return toHalfWidth_(addr)
     .replace(/[\s　]/g, '')
-    .replace(/[−‐‑–—―ー]/g, '-')
+    .replace(/[−‐‑–—―ー－]/g, '-') // 全角ハイフン(－ U+FF0D)を含む各種ハイフン類を統一
     .replace(/丁目|番地|番|号/g, '-')
     .replace(/-+/g, '-')
     .replace(/-$/, '');
