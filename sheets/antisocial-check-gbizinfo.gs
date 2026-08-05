@@ -33,6 +33,9 @@ const COL = {
   SANCTION_STATUS: 13,    // M: 行政処分の有無（手動確認）
   NOTE: 14,                  // N: 備考
   LOOKED_UP_AT: 15,       // O: 情報取得日時
+  GBIZINFO_URL: 16,       // P: gBizINFO詳細ページ（自動生成リンク）
+  NEWS_SEARCH: 17,         // Q: 関連ニュースを検索（自動生成リンク・Googleニュース検索）
+  OFFICIAL_SITE_SEARCH: 18, // R: 公式サイトを検索（自動生成リンク・Google検索）
 };
 
 const HEADERS = [
@@ -40,6 +43,7 @@ const HEADERS = [
   '資本金', '従業員数', '業種', '設立年月日',
   '年商（自動・上場企業等のみ）', '年商（手動確認）', '連絡先（手動確認）',
   '行政処分の有無（手動確認）', '備考', '情報取得日時',
+  'gBizINFO詳細ページ', '関連ニュースを検索', '公式サイトを検索',
 ];
 
 const PREFECTURE_CODES = {
@@ -218,6 +222,13 @@ function fetchFinance_(corporateNumber) {
   return Array.isArray(list) && list.length ? list[0] : null;
 }
 
+// Googleスプレッドシートの =HYPERLINK("url","表示文字") 形式の数式を安全に組み立てる。
+// 数式内の " は "" にエスケープする必要があるため、値に " が含まれていても壊れないようにする。
+function hyperlinkFormula_(url, label) {
+  var esc = function (s) { return String(s).replace(/"/g, '""'); };
+  return '=HYPERLINK("' + esc(url) + '","' + esc(label) + '")';
+}
+
 // --- 取得した基本情報をシートに書き込む共通処理 ---
 function writeCompanyInfo_(sheet, row, info) {
   sheet.getRange(row, COL.NOTE).setValue(''); // 「検索中…」等の一時メッセージをクリア
@@ -229,6 +240,25 @@ function writeCompanyInfo_(sheet, row, info) {
   sheet.getRange(row, COL.BUSINESS_CATEGORY).setValue(info.business_summary || '');
   sheet.getRange(row, COL.ESTABLISHED_DATE).setValue(info.date_of_establishment || '');
   sheet.getRange(row, COL.LOOKED_UP_AT).setValue(new Date());
+
+  // 会社名・法人番号から機械的に生成できるリンク。
+  // 「関連ニュース」「公式サイト」は無料の公的APIには存在しないため実際の記事内容までは取得できず、
+  // Google検索・Googleニュース検索をワンクリックで開けるリンクとして案内する。
+  // 会社名はA列の入力値を優先し、空の場合（法人番号のみで検索した場合）はAPIから取得した名称で補う。
+  var name = sheet.getRange(row, COL.NAME).getValue() || info.name || '';
+  if (info.corporate_number) {
+    sheet.getRange(row, COL.GBIZINFO_URL).setFormula(
+      hyperlinkFormula_('https://info.gbiz.go.jp/hojin/' + info.corporate_number, 'gBizINFOで見る')
+    );
+  }
+  if (name) {
+    sheet.getRange(row, COL.NEWS_SEARCH).setFormula(
+      hyperlinkFormula_('https://www.google.com/search?q=' + encodeURIComponent(name) + '&tbm=nws', 'ニュース検索')
+    );
+    sheet.getRange(row, COL.OFFICIAL_SITE_SEARCH).setFormula(
+      hyperlinkFormula_('https://www.google.com/search?q=' + encodeURIComponent(name + ' 公式サイト'), 'Google検索')
+    );
+  }
 
   // 財務情報（年商）は取得できる企業とできない企業があるため、失敗しても他の処理は止めない
   try {
