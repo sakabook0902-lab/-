@@ -28,7 +28,7 @@ function isCareTarget(birthDate, ym) {
  * @param emp 従業員マスタ
  * @param s 設定（料率など）
  * @param att 月次勤怠サマリ（分単位）
- * @param input 月ごとの入力 {incentive, absenceDays, otherAllowance, otherDeduction, withholdingOverride, note}
+ * @param input 月ごとの入力 {incentive, absenceDays, otherAllowance, otherDeduction, withholdingOverride, yearEndAdjustment, note}
  * @param ym 勤怠対象月, payYm 支給月
  */
 function calculate({ emp, s, att, input = {}, ym, payYm }) {
@@ -136,6 +136,8 @@ function calculate({ emp, s, att, input = {}, ym, payYm }) {
   D('源泉所得税', withholding, withholdingMethod);
   D('住民税', residentTax);
   D('その他控除', otherDeduction, input.otherDeductionLabel || '');
+  // 年末調整の過不足（プラス＝不足額の徴収、マイナス＝超過額の還付）。課税対象額には影響しない
+  D('年末調整過不足', n(input.yearEndAdjustment), n(input.yearEndAdjustment) < 0 ? '還付' : '徴収');
   const deductionTotal = lines.deductions.reduce((t, l) => t + l.amount, 0);
 
   // 支払基礎日数：月給者は暦日数。欠勤控除がある場合は所定労働日数−欠勤日数
