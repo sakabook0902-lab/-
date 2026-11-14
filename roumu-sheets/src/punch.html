@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --border:#dfe3e8; --text:#1f2933; --muted:#6b7280; --ok:#16a34a; --danger:#dc2626; --accent:#2563eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:460px; margin:0 auto; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; }
+  .company { color:var(--muted); font-size:.85rem; }
+  .clock { font-size:3rem; font-weight:700; font-variant-numeric:tabular-nums; margin:4px 0; }
+  .date { color:var(--muted); margin-bottom:14px; }
+  .who { font-size:1.15rem; font-weight:700; margin-bottom:10px; }
+  input, select { width:100%; padding:12px; font-size:1.05rem; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; font-family:inherit; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  button { padding:18px; font-size:1.1rem; border:none; border-radius:10px; color:#fff; cursor:pointer; font-family:inherit; }
+  button:disabled { opacity:.5; }
+  .in { background:var(--ok); } .out { background:var(--danger); } .brk { background:#64748b; }
+  .msg { margin-top:14px; padding:10px; border-radius:8px; display:none; }
+  .msg.ok { display:block; background:#ecfdf5; border:1px solid var(--ok); color:#065f46; }
+  .msg.err { display:block; background:#fef2f2; border:1px solid var(--danger); color:var(--danger); }
+  .status { margin-top:16px; text-align:left; font-size:.9rem; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px; display:none; }
+  .status b { display:inline-block; min-width:110px; color:var(--muted); font-weight:normal; }
+  .small { color:var(--muted); font-size:.8rem; margin-top:12px; }
+  .link { background:none; color:var(--accent); padding:6px; font-size:.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="company" id="company">&nbsp;</div>
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <div class="who" id="who" style="display:none"></div>
+    <div id="pinArea" style="display:none">
+      <input id="code" placeholder="社員番号" inputmode="numeric" autocomplete="off">
+      <input id="pin" type="password" placeholder="PIN" inputmode="numeric" autocomplete="off">
+    </div>
+    <select id="place">
+      <option value="">勤務場所（登録拠点）</option>
+      <option>五反田</option><option>赤坂</option><option>リモート</option><option>その他</option>
+    </select>
+    <div class="btns">
+      <button class="in" data-a="in">出勤</button>
+      <button class="out" data-a="out">退勤</button>
+      <button class="brk" data-a="break_start">休憩開始</button>
+      <button class="brk" data-a="break_end">休憩終了</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="status" id="status"></div>
+    <div id="checkArea" style="display:none"><button class="link" id="checkBtn">今月の勤務状況を見る</button></div>
+    <div class="small">打刻の修正が必要な場合は総務に連絡してください。</div>
+  </div>
+</div>
+<script>
+  var identified = null;
+  function jst() { return new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000); }
+  function tick() {
+    var d = jst();
+    document.getElementById('clock').textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    document.getElementById('date').textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日（' + '日月火水木金土'[d.getDay()] + '）';
+  }
+  tick(); setInterval(tick, 1000);
+
+  function showMsg(ok, text) { var m = document.getElementById('msg'); m.className = 'msg ' + (ok ? 'ok' : 'err'); m.textContent = text; }
+  function showStatus(s) {
+    if (!s) return;
+    var el = document.getElementById('status');
+    var t = s.today ? (s.today.in ? '出勤 ' + s.today.in : '') + (s.today.breakStart ? '／休憩中（' + s.today.breakStart + '〜）' : '') + (s.today.out ? '／退勤 ' + s.today.out : '') : '未出勤';
+    el.innerHTML = '<div><b>本日</b>' + t + '</div>' +
+      '<div><b>今月の出勤日数</b>' + s.workDays + '日</div>' +
+      '<div><b>今月の実働</b>' + s.worked + '（時間外 ' + s.overtime + '）</div>' +
+      '<div><b>有給の残日数</b>' + s.leaveBalance + '日</div>' +
+      (s.obligation ? '<div><b>有給 年5日</b>取得 ' + s.obligation.taken + ' / 5日（' + s.obligation.periodEnd + ' の前日まで）</div>' : '');
+    el.style.display = 'block';
+  }
+  function setBusy(b) { Array.prototype.forEach.call(document.querySelectorAll('.btns button'), function (x) { x.disabled = b; }); }
+
+  google.script.run.withSuccessHandler(function (r) {
+    document.getElementById('company').textContent = r.company || '';
+    if (r.identified) {
+      identified = r.identified;
+      var w = document.getElementById('who'); w.textContent = r.identified.name + ' さん'; w.style.display = 'block';
+      showStatus(r.status);
+    } else {
+      document.getElementById('pinArea').style.display = 'block';
+      document.getElementById('checkArea').style.display = 'block';
+    }
+  }).withFailureHandler(function (e) { showMsg(false, e.message); document.getElementById('pinArea').style.display = 'block'; }).punchInit();
+
+  Array.prototype.forEach.call(document.querySelectorAll('.btns button'), function (btn) {
+    btn.addEventListener('click', function () {
+      var code = identified ? '' : document.getElementById('code').value.trim();
+      var pin = identified ? '' : document.getElementById('pin').value.trim();
+      if (!identified && (!code || !pin)) { showMsg(false, '社員番号とPINを入力してください'); return; }
+      setBusy(true);
+      google.script.run.withSuccessHandler(function (r) {
+        setBusy(false);
+        showMsg(r.ok, r.msg);
+        if (r.ok) { showStatus(r.status); if (!identified) document.getElementById('pin').value = ''; }
+      }).withFailureHandler(function (e) { setBusy(false); showMsg(false, e.message); })
+        .punch(btn.getAttribute('data-a'), code, pin, document.getElementById('place').value);
+    });
+  });
+
+  document.getElementById('checkBtn').addEventListener('click', function () {
+    var code = document.getElementById('code').value.trim(), pin = document.getElementById('pin').value.trim();
+    if (!code || !pin) { showMsg(false, '社員番号とPINを入力してください'); return; }
+    google.script.run.withSuccessHandler(function (r) {
+      if (!r.ok) { showMsg(false, r.msg); return; }
+      showStatus(r.status);
+    }).myStatus(code, pin);
+  });
+</script>
+</body>
+</html>
