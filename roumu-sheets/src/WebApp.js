@@ -208,6 +208,7 @@ var ADM_ACTIONS = {
     var t = today_();
     var punches = read_('attendance').filter(function (r) { return r.work_date === t; });
     var emps = activeEmployees_(t.slice(0, 7)).filter(function (e) { return (!e.leave_date || e.leave_date >= t) && e.hire_date <= t; });
+    a.tasks.forEach(function (x) { x.filing = filingForTask_(x.key); });
     return {
       today: t, alerts: a,
       punches: emps.map(function (e) { var p = punches.filter(function (x) { return x.code === e.code; })[0] || {}; return { name: e.name, code: e.code, in: p.clock_in || '', out: p.clock_out || '', place: p.work_place || '' }; }),
@@ -493,7 +494,7 @@ var ADM_ACTIONS = {
     var st = d.status || '未完了';
     return read_('tasks').filter(function (t) { return st === '完了' ? t.status === '完了' : t.status !== '完了'; })
       .sort(function (a, b) { return st === '完了' ? (a.completed_at < b.completed_at ? 1 : -1) : (a.due_date < b.due_date ? -1 : 1); })
-      .map(function (t) { return { row: t._row, due: t.due_date, status: t.status, category: t.category, title: t.title, name: t.name, basis: t.basis, note: t.note, completed_at: t.completed_at }; });
+      .map(function (t) { return { row: t._row, due: t.due_date, status: t.status, category: t.category, title: t.title, name: t.name, basis: t.basis, note: t.note, completed_at: t.completed_at, filing: filingForTask_(t.key) }; });
   },
   updateTask: function (d, sess) {
     var t = read_('tasks').filter(function (x) { return x._row === Number(d.row); })[0];
@@ -660,3 +661,98 @@ function journalFile_(kind, key) {
   var file = dataFolder_('給与仕訳').createFile(Utilities.newBlob('﻿' + csv, 'text/csv', name));
   return { ok: true, url: file.getUrl(), name: name, lines: lines.length - 1 };
 }
+
+// ============================================================
+// 届出書類の記入内容シート（PDF）
+// ============================================================
+var FILING_EMP_TYPES = ['shakai_get', 'shakai_loss', 'koyou_get', 'koyou_loss', 'jumin_tokucho', 'jumin_ido'];
+
+function payRowsOf_(code) {
+  return read_('payroll').filter(function (p) { return p.code === code && p.status === '確定'; }).map(function (p) {
+    return { ym: p.ym, pay_ym: p.pay_ym, base_days: p.base_days, gross: p.gross, remuneration: p.remuneration, resident: Number(p['d:住民税'] || 0) };
+  });
+}
+
+// タスクの管理キーから、対応する書類を判定
+function filingForTask_(key) {
+  var k = String(key || '').split(':');
+  var map = { shakai_get: 'shakai_get', koyou_get: 'koyou_get', jumin: 'jumin_tokucho', shakai_loss: 'shakai_loss', koyou_loss: 'koyou_loss', jumin_ido: 'jumin_ido' };
+  if ((k[0] === 'hire' || k[0] === 'leave') && map[k[2]]) return { type: map[k[2]], code: k[1] };
+  if (k[0] === 'getsuhen') return { type: 'getsuhen', code: k[1], eff: k[2] };
+  if (k[0] === 'bonus') return { type: 'bonus_pay', payDate: k[1] };
+  if (k[0] === 'annual' && k[2] === 'santei') return { type: 'santei', year: k[1] };
+  return null;
+}
+
+function filingDoc_(d) {
+  var s = getSettings_();
+  var emps = employees_();
+  var ctx = { company: s, today: today_(), emps: emps };
+  if (FILING_EMP_TYPES.indexOf(d.type) >= 0 || d.type === 'getsuhen') {
+    var e = emps.filter(function (x) { return x.code === d.code; })[0];
+    if (!e) throw new Error('従業員を選んでください');
+    if (/loss|ido/.test(d.type) && !e.leave_date) throw new Error(e.name + 'さんは退職日が登録されていません（従業員画面で退職登録してください）');
+    ctx.emp = e;
+    ctx.pays = payRowsOf_(e.code);
+  }
+  if (d.type === 'getsuhen') {
+    var ch = read_('changes').filter(function (c) { return c.code === d.code && (!d.eff || c.effective_ym === d.eff); }).pop();
+    if (!ch) throw new Error('賃金変更履歴が見つかりません');
+    ctx.change = ch;
+  }
+  if (d.type === 'santei') {
+    ctx.year = String(Number(d.year) || Number(today_().slice(0, 4)));
+    ctx.people = activeEmployees_(ctx.year + '-07').filter(function (e) { return e.social_insurance; }).map(function (e) { return { emp: e, pays: payRowsOf_(e.code) }; });
+  }
+  if (d.type === 'bonus_pay') {
+    ctx.payDate = normalize_('date', d.payDate);
+    ctx.bonuses = read_('bonus').filter(function (b) { return b.pay_date === ctx.payDate && b.status === '確定'; });
+    if (!ctx.bonuses.length) throw new Error('この支給日の確定済み賞与がありません');
+  }
+  return Filings.buildFiling(d.type, ctx);
+}
+
+function filingHtml_(doc) {
+  var secs = doc.sections.map(function (sec) {
+    return '<h3>' + esc_(sec.title) + '</h3><table class="kvt">' + sec.rows.map(function (r) {
+      var miss = !r.value && !r.optional;
+      return '<tr' + (miss ? ' class="miss"' : '') + '><th>' + esc_(r.label) + '</th><td>' + (r.value ? esc_(r.value) : (miss ? '＿＿＿＿＿（要記入）' : '')) + (r.hint ? '<div class="hint">' + esc_(r.hint) + '</div>' : '') + '</td></tr>';
+    }).join('') + '</table>';
+  }).join('');
+  var tbl = doc.table ? '<h3>' + esc_(doc.table.title) + '</h3><table class="grid"><tr>' + doc.table.head.map(function (h) { return '<th>' + esc_(h) + '</th>'; }).join('') + '</tr>' +
+    (doc.table.rows.length ? doc.table.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc_(c) + '</td>'; }).join('') + '</tr>'; }).join('') : '<tr><td colspan="' + doc.table.head.length + '">データなし</td></tr>') + '</table>' : '';
+  return '<div class="filing"><div class="stamp">記入内容シート（転記用）— この用紙はそのまま提出できません</div><h1>' + esc_(doc.title) + '</h1>' +
+    '<table class="kvt meta"><tr><th>提出先・方法</th><td>' + esc_(doc.submitTo) + '</td></tr><tr><th>提出期限</th><td>' + esc_(doc.deadline) + '（' + esc_(doc.deadlineNote) + '）</td></tr><tr><th>作成日</th><td>' + esc_(today_()) + '</td></tr></table>' +
+    (doc.missing.length ? '<div class="missing"><b>要記入の項目（' + doc.missing.length + '件）</b><br>' + doc.missing.map(esc_).join('<br>') + '</div>' : '') +
+    secs + tbl + (doc.notes && doc.notes.length ? '<h3>注意事項</h3><ul>' + doc.notes.map(function (n) { return '<li>' + esc_(n) + '</li>'; }).join('') + '</ul>' : '') + '</div>';
+}
+
+var FILING_CSS = '.filing{font-family:sans-serif;font-size:10.5pt}.filing h1{font-size:15pt;margin:6px 0 10px}.filing h3{font-size:11.5pt;margin:14px 0 4px;border-left:4px solid #2563eb;padding-left:6px}' +
+  '.filing table{border-collapse:collapse;width:100%}.filing th,.filing td{border:1px solid #999;padding:4px 7px;text-align:left;vertical-align:top}.filing .kvt th{width:34%;background:#f3f4f6;font-weight:normal}' +
+  '.filing .grid th{background:#f3f4f6}.filing .hint{font-size:8.5pt;color:#555;margin-top:2px}.filing tr.miss td{background:#fff7ed}.filing .stamp{border:2px solid #dc2626;color:#dc2626;display:inline-block;padding:2px 8px;font-size:9pt;font-weight:bold}' +
+  '.filing .missing{border:1px solid #d97706;background:#fffbeb;padding:6px 10px;margin:8px 0;font-size:9.5pt}.filing .meta th{background:#eef2ff}';
+
+ADM_ACTIONS.filingTargets = function () {
+  var t = today_();
+  return {
+    types: Filings.TYPES,
+    emps: employees_().map(function (e) { return { code: e.code, name: e.name, hire_date: e.hire_date, leave_date: e.leave_date }; }),
+    changes: read_('changes').map(function (c) { return { code: c.code, name: c.name, eff: c.effective_ym, detail: c.detail, result: c.result }; }),
+    bonusDates: ADM_ACTIONS.bonusList().filter(function (b) { return b.confirmed; }).map(function (b) { return b.date; }),
+    year: t.slice(0, 4),
+  };
+};
+ADM_ACTIONS.filing = function (d) {
+  var doc = filingDoc_(d);
+  return { title: doc.title, missing: doc.missing, html: filingHtml_(doc), css: FILING_CSS };
+};
+ADM_ACTIONS.filingPdf = function (d, sess) {
+  var doc = filingDoc_(d);
+  var who = d.code ? (employees_().filter(function (e) { return e.code === d.code; })[0] || {}).name : (d.payDate || d.year || '');
+  var name = today_() + '_' + doc.title.replace(/[（）()\s]/g, '') + (who ? '_' + who : '') + '.pdf';
+  var blob = Utilities.newBlob('<html><head><meta charset="utf-8"><style>body{margin:20px}' + FILING_CSS + '</style></head><body>' + filingHtml_(doc) + '</body></html>', 'text/html', 'f.html')
+    .getAs('application/pdf').setName(name);
+  var file = dataFolder_('届出書類').createFile(blob);
+  admLog_(sess, '届出書類PDF作成', doc.title + (who ? '（' + who + '）' : ''));
+  return { ok: true, url: file.getUrl(), name: name, missing: doc.missing.length };
+};

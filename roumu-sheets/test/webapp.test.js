@@ -184,3 +184,34 @@ test('タスク・設定・ダッシュボード', () => {
   assert.strictEqual(x.ok(x.api(t, 'adm.settings', {})).find((s) => s.key === 'pay_day').value, '20');
   assert.ok(x.ok(x.api(t, 'adm.refresh', {})));
 });
+
+test('届出書類：タスクから書類を判定・各書類の表示とPDF作成', () => {
+  const x = env('');
+  const t = adminToken(x);
+  // 鈴木さん（入社予定）の入社手続きタスクに資格取得届が紐づく
+  const tasks = x.ok(x.api(t, 'adm.tasks', {}));
+  const tk = tasks.find((k) => k.title.includes('被保険者資格取得届') && k.title.includes('健康保険'));
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(tk.filing)), { type: 'shakai_get', code: '1003' });
+  const f = x.ok(x.api(t, 'adm.filing', tk.filing));
+  assert.match(f.html, /記入内容シート/);
+  assert.ok(f.missing.some((m) => m.includes('マイナンバー')));
+  // 会社情報を設定すると要記入が減る
+  x.ok(x.api(t, 'adm.saveSettings', { values: { company_address: '東京都品川区西五反田', company_rep: '代表 一郎', company_tel: '03-0000-0000', shakai_office_symbol: '01-ﾆｼﾞ', shakai_office_number: '12345' } }));
+  const f2 = x.ok(x.api(t, 'adm.filing', tk.filing));
+  assert.ok(f2.missing.length < f.missing.length);
+  const pdf = x.ok(x.api(t, 'adm.filingPdf', tk.filing));
+  assert.ok(pdf.url && pdf.name.includes('資格取得届'));
+  // 退職者がいないと喪失届は作れない
+  assert.strictEqual(x.api(t, 'adm.filing', { type: 'shakai_loss', code: '1001' }).ok, false);
+  x.ok(x.api(t, 'adm.retire', { code: '1001', leave_date: '2026-12-31', leave_reason: '自己都合' }));
+  for (const type of ['shakai_loss', 'koyou_loss', 'jumin_ido']) assert.ok(x.ok(x.api(t, 'adm.filing', { type, code: '1001' })).html);
+  assert.ok(x.ok(x.api(t, 'adm.tasks', {})).some((k) => k.filing && k.filing.type === 'jumin_ido'));
+  // 算定基礎・賞与支払届
+  assert.match(x.ok(x.api(t, 'adm.filing', { type: 'santei', year: '2026' })).html, /算定基礎届/);
+  x.ok(x.api(t, 'adm.saveBonus', { payDate: '2026-12-10', rows: [{ code: '1002', amount: 300000, rate: '4.084' }] }));
+  x.ok(x.api(t, 'adm.confirmBonus', { payDate: '2026-12-10' }));
+  const bt = x.ok(x.api(t, 'adm.tasks', {})).find((k) => k.filing && k.filing.type === 'bonus_pay');
+  assert.match(x.ok(x.api(t, 'adm.filing', bt.filing)).html, /賞与支払届/);
+  const tg = x.ok(x.api(t, 'adm.filingTargets', {}));
+  assert.strictEqual(Object.keys(tg.types).length, 9);
+});

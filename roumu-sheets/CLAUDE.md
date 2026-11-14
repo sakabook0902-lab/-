@@ -8,6 +8,7 @@ Googleスプレッドシートにバインドした Apps Script（V8）。人事
 - `src/WebApp.js`：Webアプリのサーバー側。画面からは `api({token, action, data})` だけを呼ぶ。`auth.*`（ログイン）／`me.*`（従業員本人のデータのみ）／`adm.*`（管理者のみ）。セッションは CacheService（6時間）
 - `src/app.html`：画面（1ページのアプリ。ビルド時に `HTML_APP` 変数として埋め込む）。表示する値は必ず `esc()` でエスケープする
 - 賞与（`roumu/src/lib/bonus.js`）・年末調整（`yearEnd.js`）・全銀振込データ（`zengin.js`）も共通ライブラリ
+- 届出書類の記入内容シート（`roumu/src/lib/filings.js`）：正式様式ではなく転記用。届出書類の作成・提出の主体は会社自身（報酬を得て代行するのは社労士の独占業務）。タスクの管理キーから書類を判定（`filingForTask_`）
 - `src/appsscript.json`：マニフェスト（タイムゾーン Asia/Tokyo、Webアプリは「自分として実行」）
 - **計算ロジックはサーバー版と共通**：`../roumu/src/lib/*.js`（勤怠・給与・源泉税・標準報酬・有給・手続き）。`scripts/build.js` がモジュール登録形式（`__req('payroll')`）で `dist/Code.gs` に同梱する。**計算の修正は `roumu/src/lib` 側で行う**（Node版のテスト `roumu/test` も通すこと）
 - `dist/Code.gs`：利用者が Apps Script に貼り付ける1ファイル（生成物。直接編集しない）

@@ -6,7 +6,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const libDir = path.join(root, '..', 'roumu', 'src', 'lib');
-const LIBS = ['dates', 'standardRemuneration', 'withholding', 'attendance', 'leave', 'payroll', 'procedures', 'bonus', 'yearEnd', 'zengin'];
+const LIBS = ['dates', 'standardRemuneration', 'withholding', 'attendance', 'leave', 'payroll', 'procedures', 'bonus', 'yearEnd', 'zengin', 'filings'];
 
 let out = `// ============================================================
 // 勤怠・給与計算・労務手続き管理（Googleスプレッドシート版）

@@ -10,6 +10,7 @@ var SR = __req('standardRemuneration');
 var Bonus = __req('bonus');
 var YearEnd = __req('yearEnd');
 var Zengin = __req('zengin');
+var Filings = __req('filings');
 
 // ---------- シート定義 [キー, 見出し, 型] ----------
 // 型: text / num / numOrNull / bool / date / time / ym / hours（表示用）
@@ -32,6 +33,7 @@ var SHEETS = {
       ['resident_tax_june', '住民税6月分', 'num'], ['resident_tax_monthly', '住民税7月〜翌5月分', 'num'], ['slip_consent', '明細メール配信の同意', 'bool'],
       ['bank_code', '振込先 銀行番号', 'text'], ['bank_name', '振込先 銀行名（カナ）', 'text'], ['branch_code', '振込先 支店番号', 'text'], ['branch_name', '振込先 支店名（カナ）', 'text'],
       ['account_type', '振込先 預金種目', 'text'], ['account_number', '振込先 口座番号', 'text'], ['account_holder', '振込先 口座名義（カナ）', 'text'],
+      ['insured_number', '健保・厚年 被保険者整理番号', 'text'], ['koyou_number', '雇用保険 被保険者番号', 'text'], ['weekly_hours', '週の所定労働時間', 'num'],
     ],
   },
   attendance: {
@@ -130,6 +132,13 @@ var SETTING_DEFS = [
   ['notify_emails', '通知先メールアドレス（カンマ区切り）', '', '毎朝の通知の送り先'],
   ['slack_webhook', 'Slack Incoming Webhook URL（任意）', '', '設定するとSlackにも通知'],
   ['punch_require_pin', '打刻時に常にPINを求める（TRUE/FALSE）', 'FALSE', 'FALSEならGoogleアカウントで本人確認できた人はPIN不要'],
+  ['corporate_number', '会社：法人番号（13桁）', '', '届出書類の記入内容シートに使用'],
+  ['company_address', '会社：所在地', '', ''],
+  ['company_rep', '会社：代表者（事業主）氏名', '', ''],
+  ['company_tel', '会社：電話番号', '', ''],
+  ['shakai_office_symbol', '社会保険：事業所整理記号', '', '適用通知書・保険料納入告知書に記載'],
+  ['shakai_office_number', '社会保険：事業所番号', '', ''],
+  ['koyou_office_number', '雇用保険：適用事業所番号', '', '例：1301-123456-7'],
   ['admin_emails', '管理者のGoogleアカウント（カンマ区切り）', '', 'ここに入れた人は管理画面を使える（スプレッドシートのオーナーは常に管理者）'],
   ['zengin_client_code', '振込：委託者コード（10桁）', '', '銀行と総合振込の契約をしたときに通知される番号'],
   ['zengin_client_name', '振込：委託者名（カナ）', '', '例：ｶ)ﾆｼﾞｶﾝｺﾞﾃﾝｼｮｸ'],
