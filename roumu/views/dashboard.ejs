@@ -1,0 +1,63 @@
+<%- include('partials/layout_top') %>
+<h1>ダッシュボード</h1>
+<p class="hint"><%= t %> 時点</p>
+
+<% const overdue = tasks.filter(x => x.due_date < t); const punched = emps.filter(e => punchMap[e.id]); %>
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-num"><%= emps.length %></span><span class="stat-label">在籍者</span></div>
+  <div class="stat-card"><span class="stat-num"><%= punched.length %> / <%= emps.length %></span><span class="stat-label">本日の出勤打刻</span></div>
+  <div class="stat-card <%= overdue.length ? 'danger' : '' %>"><span class="stat-num"><%= overdue.length %></span><span class="stat-label">期限超過タスク</span></div>
+  <div class="stat-card <%= tasks.length - overdue.length ? 'warn' : '' %>"><span class="stat-num"><%= tasks.length - overdue.length %></span><span class="stat-label">2週間以内の期限</span></div>
+  <div class="stat-card <%= otAlerts.length ? 'danger' : '' %>"><span class="stat-num"><%= otAlerts.length %></span><span class="stat-label">36協定アラート</span></div>
+  <div class="stat-card <%= leaveAlerts.length ? 'warn' : '' %>"><span class="stat-num"><%= leaveAlerts.length %></span><span class="stat-label">有給5日義務アラート</span></div>
+  <div class="stat-card"><span class="stat-num"><%= drafts %></span><span class="stat-label">未確定の給与</span></div>
+</div>
+
+<div class="panel">
+  <div class="row between"><h2>期限が近い労務手続き</h2><a href="/tasks">すべて見る →</a></div>
+  <% if (!tasks.length) { %><p class="hint">2週間以内に期限が来るタスクはありません。</p><% } else { %>
+  <table class="tbl">
+    <tr><th>期限</th><th>区分</th><th>手続き</th><th>対象者</th><th></th></tr>
+    <% tasks.forEach(x => { %>
+    <tr class="<%= x.due_date < t ? 'overdue' : '' %>">
+      <td><%= x.due_date %> <% if (x.due_date < t) { %><span class="badge danger">超過</span><% } %></td>
+      <td><span class="badge"><%= x.category %></span></td>
+      <td><%= x.title %><% if (x.basis) { %><div class="small muted"><%= x.basis %></div><% } %></td>
+      <td><%= x.employee_name || '全社' %></td>
+      <td><form method="post" action="/tasks/<%= x.id %>/complete"><input type="hidden" name="back" value="/"><button class="small">完了</button></form></td>
+    </tr>
+    <% }) %>
+  </table>
+  <% } %>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>36協定アラート（今月）</h2>
+    <% if (!otAlerts.length) { %><p class="hint">上限に近づいている従業員はいません。</p><% } %>
+    <% otAlerts.forEach(a => { %><p><span class="badge <%= a.level %>"><%= a.level === 'danger' ? '超過' : '注意' %></span> <a href="/attendance/<%= a.emp.id %>"><%= a.emp.name %></a>：<%= a.msg %></p><% }) %>
+  </div>
+  <div class="panel">
+    <h2>有給休暇 年5日取得義務</h2>
+    <% if (!leaveAlerts.length) { %><p class="hint">期限が迫っている従業員はいません。</p><% } %>
+    <% leaveAlerts.forEach(a => { %><p><span class="badge <%= a.ob.level %>">残<%= a.ob.daysLeft %>日</span> <a href="/employees/<%= a.emp.id %>#leave"><%= a.emp.name %></a>：取得 <%= a.ob.taken %> / 5日（期限 <%= a.ob.periodEnd %> の前日まで）</p><% }) %>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>本日の打刻状況</h2>
+    <table class="tbl">
+      <tr><th>氏名</th><th>出勤</th><th>退勤</th></tr>
+      <% emps.forEach(e => { const p = punchMap[e.id]; %>
+      <tr><td><a href="/attendance/<%= e.id %>"><%= e.name %></a></td><td><%= p ? p.clock_in || '' : '' %></td><td><%= p ? p.clock_out || '' : '' %></td></tr>
+      <% }) %>
+    </table>
+  </div>
+  <div class="panel">
+    <h2>退勤打刻漏れ（直近1ヶ月）</h2>
+    <% if (!missingOut.length) { %><p class="hint">打刻漏れはありません。</p><% } %>
+    <% missingOut.forEach(m => { %><p><a href="/attendance/<%= m.employee_id %>?ym=<%= m.work_date.slice(0,7) %>#d<%= m.work_date %>"><%= m.name %>：<%= m.work_date %>（出勤 <%= m.clock_in %>）</a></p><% }) %>
+  </div>
+</div>
+<%- include('partials/layout_bottom') %>

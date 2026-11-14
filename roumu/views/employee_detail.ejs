@@ -1,0 +1,105 @@
+<%- include('partials/layout_top') %>
+<div class="row between">
+  <h1><%= emp.name %> <span class="muted small"><%= emp.code %></span></h1>
+  <div class="row"><a class="btn sub" href="/attendance/<%= emp.id %>">勤怠</a><a class="btn" href="/employees/<%= emp.id %>/edit">編集</a></div>
+</div>
+<div class="grid2">
+  <div class="panel">
+    <h2>基本情報</h2>
+    <table class="kv">
+      <tr><th>雇用形態</th><td><%= emp.employment_type %> / <%= emp.location || '-' %></td></tr>
+      <tr><th>業務</th><td><%= emp.job || '-' %></td></tr>
+      <tr><th>入社日</th><td><%= emp.hire_date %></td></tr>
+      <tr><th>生年月日</th><td><%= emp.birth_date || '未登録' %> <% if (care) { %><span class="badge">介護保険対象</span><% } %></td></tr>
+      <tr><th>退職日</th><td><%= emp.leave_date ? emp.leave_date + '（' + (emp.leave_reason || '') + '）' : '-' %></td></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h2>給与・社会保険</h2>
+    <table class="kv">
+      <tr><th>基本給</th><td><%= yen(emp.base_salary) %>円</td></tr>
+      <tr><th>役職手当 / 通勤手当</th><td><%= yen(emp.position_allowance) %>円 / <%= yen(emp.commute_allowance) %>円</td></tr>
+      <tr><th>固定残業代</th><td><%= yen(emp.fixed_ot_pay) %>円（<%= emp.fixed_ot_hours %>時間分）</td></tr>
+      <tr><th>標準報酬（健保/厚年）</th><td><%= yen(emp.health_std) %>円 / <%= yen(emp.pension_std) %>円</td></tr>
+      <tr><th>税区分 / 扶養</th><td><%= emp.tax_column %>欄 / <%= emp.dependents %>人</td></tr>
+      <tr><th>住民税</th><td>6月 <%= yen(emp.resident_tax_june) %>円 / 7月〜 <%= yen(emp.resident_tax_monthly) %>円</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="panel" id="leave">
+  <h2>年次有給休暇</h2>
+  <div class="stat-grid">
+    <div class="stat-card"><span class="stat-num"><%= leave.balance %></span><span class="stat-label">残日数</span></div>
+    <% if (leave.obligation) { const ob = leave.obligation; %>
+    <div class="stat-card <%= ob.level === 'ok' ? '' : ob.level %>"><span class="stat-num"><%= ob.taken %> / 5</span><span class="stat-label">年5日義務（<%= ob.periodStart %>〜<%= ob.periodEnd %>の前日）</span></div>
+    <% } %>
+    <% if (leave.nextGrant) { %><div class="stat-card"><span class="stat-num"><%= leave.nextGrant.days %>日</span><span class="stat-label">次回付与 <%= leave.nextGrant.date %></span></div><% } %>
+  </div>
+  <div class="grid2">
+    <div>
+      <table class="tbl">
+        <tr><th>付与日</th><th class="num">付与</th><th class="num">使用</th><th>時効</th></tr>
+        <% leave.grants.forEach(g => { %><tr class="<%= g.expires <= t ? 'muted' : '' %>"><td><%= g.date %></td><td class="num"><%= g.days %></td><td class="num"><%= g.used %></td><td><%= g.expires %><%= g.expires <= t ? '（消滅）' : '' %></td></tr><% }) %>
+      </table>
+      <% if (leave.unassigned.length) { %><p class="alert small">付与日数を超える取得、または付与前の取得が <%= leave.unassigned.length %> 件あります。前倒し付与・特別休暇の扱いを確認してください。</p><% } %>
+    </div>
+    <div>
+      <form method="post" action="/employees/<%= emp.id %>/paid-leaves" class="inline">
+        <label>取得日<input type="date" name="leave_date" required></label>
+        <label>日数<select name="days"><option value="1">1日</option><option value="0.5">半日</option></select></label>
+        <label>備考<input name="note"></label>
+        <button class="small">取得を登録</button>
+      </form>
+      <table class="tbl" style="margin-top:10px">
+        <% leave.usages.slice().reverse().slice(0, 15).forEach(u => { %>
+        <tr><td><%= u.leave_date %></td><td><%= u.days %>日</td><td><%= u.note || '' %></td><td><form method="post" action="/paid-leaves/<%= u.id %>/delete" onsubmit="return confirm('削除しますか？')"><button class="small sub">削除</button></form></td></tr>
+        <% }) %>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>労務手続きタスク</h2>
+  <% if (!tasks.length) { %><p class="hint">タスクはありません。</p><% } else { %>
+  <table class="tbl">
+    <tr><th>期限</th><th>手続き</th><th>状態</th><th></th></tr>
+    <% tasks.forEach(x => { %>
+    <tr class="<%= x.status === '未対応' && x.due_date < t ? 'overdue' : '' %>">
+      <td><%= x.due_date || '' %></td>
+      <td><%= x.title %><% if (x.basis) { %><div class="small muted"><%= x.basis %></div><% } %></td>
+      <td><span class="badge <%= x.status === '完了' ? 'ok' : (x.due_date < t ? 'danger' : 'warn') %>"><%= x.status %></span></td>
+      <td><% if (x.status === '未対応') { %><form method="post" action="/tasks/<%= x.id %>/complete"><input type="hidden" name="back" value="/employees/<%= emp.id %>"><button class="small">完了</button></form><% } %></td>
+    </tr>
+    <% }) %>
+  </table>
+  <% } %>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>給与履歴</h2>
+    <table class="tbl">
+      <tr><th>勤怠月</th><th>支給月</th><th class="num">総支給</th><th class="num">差引支給</th><th>状態</th></tr>
+      <% pays.forEach(p => { %><tr><td><a href="/payroll/<%= p.id %>"><%= p.ym %></a></td><td><%= p.pay_ym %></td><td class="num"><%= yen(p.gross) %></td><td class="num"><%= yen(p.net) %></td><td><span class="badge <%= p.status === '確定' ? 'ok' : '' %>"><%= p.status %></span></td></tr><% }) %>
+    </table>
+  </div>
+  <div class="panel">
+    <h2>固定的賃金の変更履歴</h2>
+    <% if (!changes.length) { %><p class="hint">変更履歴はありません。</p><% } %>
+    <% changes.forEach(c => { %><p><%= c.effective_ym %>支給分〜：<%= c.detail %> <span class="badge <%= c.checked ? 'ok' : 'warn' %>"><%= c.checked ? '随時改定 判定済' : '3ヶ月分の確定待ち' %></span></p><% }) %>
+  </div>
+</div>
+
+<% if (!emp.leave_date) { %>
+<div class="panel">
+  <h2>退職登録</h2>
+  <form method="post" action="/employees/<%= emp.id %>/retire" class="inline" onsubmit="return confirm('退職を登録し、退職手続きタスクを作成します。よろしいですか？')">
+    <label>退職日<input type="date" name="leave_date" required></label>
+    <label>退職事由<select name="leave_reason"><option>自己都合</option><option>会社都合</option><option>契約期間満了</option><option>定年</option><option>その他</option></select></label>
+    <button class="danger small">退職を登録（手続きタスクを自動作成）</button>
+  </form>
+</div>
+<% } %>
+<%- include('partials/layout_bottom') %>

@@ -1,0 +1,22 @@
+<%- include('partials/layout_top') %>
+<div class="row between"><h1>従業員</h1><div class="row"><a class="btn sub" href="/export/roster.csv">労働者名簿CSV</a><a class="btn" href="/employees/new">＋ 従業員登録</a></div></div>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>社員番号</th><th>氏名</th><th>雇用形態</th><th>拠点</th><th>入社日</th><th class="num">基本給</th><th class="num">固定残業代</th><th>社保/雇保</th><th>状態</th></tr>
+  <% emps.forEach(e => { const left = e.leave_date && e.leave_date < t; %>
+  <tr class="<%= left ? 'muted' : '' %>">
+    <td><%= e.code %></td>
+    <td><a href="/employees/<%= e.id %>"><%= e.name %></a></td>
+    <td><%= e.employment_type %></td>
+    <td><%= e.location || '' %></td>
+    <td><%= e.hire_date %></td>
+    <td class="num"><%= yen(e.base_salary) %></td>
+    <td class="num"><%= e.fixed_ot_pay ? yen(e.fixed_ot_pay) + '（' + e.fixed_ot_hours + 'h）' : '-' %></td>
+    <td><%= e.social_insurance ? '○' : '×' %> / <%= e.employment_insurance ? '○' : '×' %></td>
+    <td><% if (left) { %><span class="badge">退職 <%= e.leave_date %></span><% } else if (e.leave_date) { %><span class="badge warn">退職予定 <%= e.leave_date %></span><% } else { %><span class="badge ok">在籍</span><% } %></td>
+  </tr>
+  <% }) %>
+</table>
+</div>
+<% if (!emps.length) { %><p class="hint">まだ従業員が登録されていません。「従業員登録」から登録すると、入社手続きのタスクが自動で作成されます。</p><% } %>
+<%- include('partials/layout_bottom') %>

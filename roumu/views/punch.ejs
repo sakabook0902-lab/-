@@ -1,0 +1,29 @@
+<%- include('partials/layout_top') %>
+<div class="punch panel">
+  <h1>打刻</h1>
+  <div class="clock" id="clock"><%= now.time %></div>
+  <% if (message) { %><div class="flash"><%= message %></div><% } %>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="post" action="/punch" autocomplete="off">
+    <input name="code" placeholder="社員番号" required inputmode="numeric" autofocus>
+    <input name="pin" type="password" placeholder="PIN" required inputmode="numeric">
+    <select name="work_place">
+      <option value="">勤務場所（登録拠点）</option>
+      <option>五反田</option><option>赤坂</option><option>リモート</option><option>その他</option>
+    </select>
+    <div class="punch-buttons">
+      <button name="action" value="in" class="in">出勤</button>
+      <button name="action" value="out" class="out">退勤</button>
+      <button name="action" value="break_start" class="brk">休憩開始</button>
+      <button name="action" value="break_end" class="brk">休憩終了</button>
+    </div>
+  </form>
+  <p class="hint small">打刻の修正が必要な場合は管理者に連絡してください。</p>
+</div>
+<script>
+  setInterval(() => {
+    const d = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000);
+    document.getElementById('clock').textContent = d.toTimeString().slice(0, 5);
+  }, 1000);
+</script>
+<%- include('partials/layout_bottom') %>

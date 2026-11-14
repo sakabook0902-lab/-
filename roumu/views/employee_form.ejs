@@ -1,0 +1,50 @@
+<%- include('partials/layout_top') %>
+<h1><%= isNew ? '従業員登録' : emp.name + ' の編集' %></h1>
+<% errors.forEach(e => { %><div class="alert"><%= e %></div><% }) %>
+<% const v = (k) => emp[k] === null || emp[k] === undefined ? '' : emp[k]; %>
+<form method="post" action="<%= isNew ? '/employees' : '/employees/' + emp.id %>" class="panel">
+  <fieldset><legend>基本情報（労働者名簿の記載事項）</legend>
+    <div class="form-grid">
+      <label>社員番号 *<input name="code" value="<%= v('code') %>" required></label>
+      <label>氏名 *<input name="name" value="<%= v('name') %>" required></label>
+      <label>フリガナ<input name="name_kana" value="<%= v('name_kana') %>"></label>
+      <label>生年月日<input type="date" name="birth_date" value="<%= v('birth_date') %>"></label>
+      <label>性別<select name="gender"><% ['', '男', '女', 'その他'].forEach(g => { %><option <%= v('gender') === g ? 'selected' : '' %>><%= g %></option><% }) %></select></label>
+      <label>住所<input name="address" value="<%= v('address') %>"></label>
+      <label>従事する業務<input name="job" value="<%= v('job') %>" placeholder="例：キャリアアドバイザー"></label>
+      <label>拠点<select name="location"><% ['', '五反田', '赤坂', 'リモート'].forEach(g => { %><option <%= v('location') === g ? 'selected' : '' %>><%= g %></option><% }) %></select></label>
+      <label>雇用形態<select name="employment_type"><% ['正社員', '契約社員', 'パート・アルバイト'].forEach(g => { %><option <%= v('employment_type') === g ? 'selected' : '' %>><%= g %></option><% }) %></select></label>
+      <label>入社日 *<input type="date" name="hire_date" value="<%= v('hire_date') %>" required></label>
+      <label>打刻用PIN（4〜8桁の数字） *<input name="pin" value="<%= v('pin') %>" required inputmode="numeric"></label>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>給与（固定的賃金）</legend>
+    <div class="form-grid">
+      <label>基本給（月額）<input type="number" name="base_salary" value="<%= v('base_salary') %>"></label>
+      <label>役職手当<input type="number" name="position_allowance" value="<%= v('position_allowance') %>"></label>
+      <label>通勤手当（非課税）<input type="number" name="commute_allowance" value="<%= v('commute_allowance') %>"></label>
+      <label>固定残業代<input type="number" name="fixed_ot_pay" value="<%= v('fixed_ot_pay') %>"></label>
+      <label>固定残業時間（時間）<input type="number" step="0.5" name="fixed_ot_hours" value="<%= v('fixed_ot_hours') %>"></label>
+      <% if (!isNew) { %>
+      <label>変更後の賃金を初めて支給する月<input type="month" name="change_effective_ym" value="<%= nextPayYm %>"><span class="small muted">固定的賃金を変更した場合のみ使用（月額変更届の自動判定）</span></label>
+      <% } %>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>社会保険・税</legend>
+    <div class="form-grid">
+      <label class="check"><input type="checkbox" name="social_insurance" <%= emp.social_insurance ? 'checked' : '' %>> 健康保険・厚生年金に加入</label>
+      <label class="check"><input type="checkbox" name="employment_insurance" <%= emp.employment_insurance ? 'checked' : '' %>> 雇用保険に加入</label>
+      <label>健保 標準報酬月額<input type="number" name="health_std" value="<%= v('health_std') %>" placeholder="空欄なら自動算出"></label>
+      <label>厚年 標準報酬月額<input type="number" name="pension_std" value="<%= v('pension_std') %>" placeholder="空欄なら自動算出"></label>
+      <label>源泉徴収 税額表の区分<select name="tax_column"><% ['甲', '乙'].forEach(g => { %><option <%= v('tax_column') === g ? 'selected' : '' %>><%= g %></option><% }) %></select></label>
+      <label>源泉控除対象配偶者＋扶養親族の数<input type="number" name="dependents" value="<%= v('dependents') || 0 %>"></label>
+      <label>住民税 6月分<input type="number" name="resident_tax_june" value="<%= v('resident_tax_june') %>"></label>
+      <label>住民税 7月〜翌5月分（月額）<input type="number" name="resident_tax_monthly" value="<%= v('resident_tax_monthly') %>"></label>
+    </div>
+    <p class="hint small">標準報酬月額は、資格取得届・算定基礎届・月額変更届の決定通知書の金額を入力してください。住民税は毎年5月に届く「特別徴収税額決定通知書」の金額を入力します。</p>
+  </fieldset>
+  <button><%= isNew ? '登録（入社手続きタスクを自動作成）' : '保存' %></button>
+</form>
+<%- include('partials/layout_bottom') %>

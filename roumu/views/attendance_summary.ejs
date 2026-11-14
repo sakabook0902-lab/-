@@ -1,0 +1,25 @@
+<%- include('partials/layout_top') %>
+<div class="row between">
+  <h1>勤怠一覧 <%= ym %></h1>
+  <div class="row"><a class="btn sub" href="/attendance?ym=<%= prev %>">← 前月</a><a class="btn sub" href="/attendance?ym=<%= next %>">翌月 →</a><a class="btn sub" href="/export/attendance.csv?ym=<%= ym %>">出勤簿CSV</a></div>
+</div>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>氏名</th><th class="num">出勤日数</th><th class="num">実働</th><th class="num">時間外</th><th class="num">うち60h超</th><th class="num">法定休日</th><th class="num">深夜</th><th>打刻漏れ</th><th>36協定</th></tr>
+  <% rows.forEach(r => { const s = r.summary; %>
+  <tr>
+    <td><a href="/attendance/<%= r.emp.id %>?ym=<%= ym %>"><%= r.emp.name %></a></td>
+    <td class="num"><%= s.workDays %></td>
+    <td class="num"><%= fmtHours(s.worked) %></td>
+    <td class="num"><%= fmtHours(s.overtime) %></td>
+    <td class="num"><%= fmtHours(s.overtimeOver60) %></td>
+    <td class="num"><%= fmtHours(s.holiday) %></td>
+    <td class="num"><%= fmtHours(s.night) %></td>
+    <td><%= s.incomplete ? s.incomplete + '件' : '' %></td>
+    <td><% r.alerts.forEach(a => { %><div><span class="badge <%= a.level %>"><%= a.level === 'danger' ? '超過' : '注意' %></span> <span class="small"><%= a.msg %></span></div><% }) %></td>
+  </tr>
+  <% }) %>
+</table>
+</div>
+<p class="hint small">時間外＝1日8時間超＋週40時間超（法定休日を除く）。法定休日＝設定画面で指定した曜日の労働。36協定の年間上限（360時間）は協定の起算日に合わせて別途確認してください。</p>
+<%- include('partials/layout_bottom') %>

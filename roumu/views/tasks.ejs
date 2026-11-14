@@ -1,0 +1,48 @@
+<%- include('partials/layout_top') %>
+<div class="row between">
+  <h1>労務タスク</h1>
+  <div class="row"><a class="btn <%= status === '未対応' ? '' : 'sub' %>" href="/tasks?status=未対応">未対応</a><a class="btn <%= status === '完了' ? '' : 'sub' %>" href="/tasks?status=完了">完了済み</a></div>
+</div>
+<p class="hint">入社・退職の登録、給与確定時の随時改定判定、年次スケジュールから自動で作成されます。書類の作成・提出は自社担当者または顧問社労士が行ってください。</p>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>期限</th><th>区分</th><th>手続き</th><th>対象者</th><th><%= status === '完了' ? '完了日時' : '' %></th></tr>
+  <% tasks.forEach(x => { const od = status === '未対応' && x.due_date && x.due_date < t; %>
+  <tr class="<%= od ? 'overdue' : '' %>">
+    <td><%= x.due_date || '-' %><% if (od) { %> <span class="badge danger">超過</span><% } %></td>
+    <td><span class="badge"><%= x.category %></span></td>
+    <td><%= x.title %><% if (x.basis) { %><div class="small muted"><%= x.basis %></div><% } %><% if (x.note) { %><div class="small">メモ：<%= x.note %></div><% } %></td>
+    <td><% if (x.employee_id) { %><a href="/employees/<%= x.employee_id %>"><%= x.employee_name %></a><% } else { %>全社<% } %></td>
+    <td>
+      <% if (status === '未対応') { %>
+      <form method="post" action="/tasks/<%= x.id %>/complete" class="inline"><input name="note" placeholder="メモ（提出日など）" style="width:140px"><button class="small">完了</button></form>
+      <% } else { %>
+      <span class="small"><%= x.completed_at %>（<%= x.completed_by %>）</span>
+      <form method="post" action="/tasks/<%= x.id %>/reopen" style="display:inline"><button class="small sub">戻す</button></form>
+      <% } %>
+    </td>
+  </tr>
+  <% }) %>
+</table>
+</div>
+<% if (!tasks.length) { %><p class="hint">該当するタスクはありません。</p><% } %>
+
+<div class="grid2" style="margin-top:18px">
+  <div class="panel">
+    <h2>タスクを手動で追加</h2>
+    <form method="post" action="/tasks/new" class="inline">
+      <label>内容<input name="title" required style="width:220px"></label>
+      <label>期限<input type="date" name="due_date"></label>
+      <label>対象者<select name="employee_id"><option value="">全社</option><% emps.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select></label>
+      <button class="small">追加</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h2>年次タスクの作成</h2>
+    <p class="small muted">算定基礎届・労働保険年度更新・年末調整・法定調書・住民税更新・36協定更新。今日以降のものはダッシュボード表示時に自動作成されます。</p>
+    <form method="post" action="/tasks/annual" class="inline">
+      <label>年<input type="number" name="year" value="<%= year %>"></label><button class="small sub">作成</button>
+    </form>
+  </div>
+</div>
+<%- include('partials/layout_bottom') %>

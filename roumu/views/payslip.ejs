@@ -1,0 +1,34 @@
+<%- include('partials/layout_top') %>
+<% const r = p.result, a = r.attendance || {}; %>
+<div class="noprint row" style="margin-bottom:12px"><a class="btn sub" href="/payroll/<%= p.id %>">← 戻る</a><button onclick="window.print()">印刷 / PDF保存</button></div>
+<div class="slip">
+  <h1>給与明細書</h1>
+  <div class="row between">
+    <div><strong><%= p.emp.name %></strong> 様（<%= p.emp.code %>）</div>
+    <div><%= p.pay_ym.replace('-', '年') %>月<%= s.pay_day %>日支給（<%= p.ym.replace('-', '年') %>月勤怠分）<br><%= s.company_name %></div>
+  </div>
+  <% if (p.status !== '確定') { %><p class="alert">※ 未確定（下書き）の明細です</p><% } %>
+  <h2 style="margin-top:16px">勤怠</h2>
+  <table class="tbl">
+    <tr><th>出勤日数</th><th>実働時間</th><th>時間外</th><th>法定休日</th><th>深夜</th><th>欠勤日数</th></tr>
+    <tr><td><%= a.workDays %>日</td><td><%= fmtHours(a.worked || 0) %></td><td><%= fmtHours(a.overtime || 0) %></td><td><%= fmtHours(a.holiday || 0) %></td><td><%= fmtHours(a.night || 0) %></td><td><%= p.input.absenceDays || 0 %>日</td></tr>
+  </table>
+  <div class="cols" style="margin-top:16px">
+    <div>
+      <h2>支給</h2>
+      <table class="tbl">
+        <% r.lines.earnings.forEach(l => { %><tr><td><%= l.label %></td><td class="num"><%= yen(l.amount) %></td></tr><% }) %>
+        <tr><th>総支給額</th><th class="num"><%= yen(r.gross) %></th></tr>
+      </table>
+    </div>
+    <div>
+      <h2>控除</h2>
+      <table class="tbl">
+        <% r.lines.deductions.forEach(l => { %><tr><td><%= l.label %></td><td class="num"><%= yen(l.amount) %></td></tr><% }) %>
+        <tr><th>控除合計</th><th class="num"><%= yen(r.deductionTotal) %></th></tr>
+      </table>
+    </div>
+  </div>
+  <table class="tbl" style="margin-top:16px"><tr><th style="width:50%">差引支給額</th><th class="num" style="font-size:1.3rem"><%= yen(r.net) %> 円</th></tr></table>
+</div>
+<%- include('partials/layout_bottom') %>
