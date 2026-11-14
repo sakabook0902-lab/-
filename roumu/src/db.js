@@ -1,13 +1,11 @@
+const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'roumu.db');
-const db = new Database(dbPath);
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS employees (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT NOT NULL UNIQUE,
@@ -116,6 +114,62 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   detail TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
-`);
+`;
+
+function open() {
+  const c = new Database(dbPath);
+  c.pragma('journal_mode = WAL');
+  c.pragma('foreign_keys = ON');
+  c.exec(SCHEMA);
+  return c;
+}
+
+let conn = open();
+
+// 接続を差し替えられるよう、他モジュールにはこのラッパーを渡す（バックアップからの復元で使用）
+const db = {
+  prepare: (sql) => conn.prepare(sql),
+  exec: (sql) => conn.exec(sql),
+  pragma: (s) => conn.pragma(s),
+  transaction: (fn) => conn.transaction(fn),
+  path: dbPath,
+
+  // 一貫性のあるスナップショットを作成（稼働中でも安全）
+  backupTo: (file) => conn.backup(file),
+
+  // バックアップファイルが本システムのDBとして妥当か確認
+  validateBackup(file) {
+    const head = Buffer.alloc(16);
+    const fd = fs.openSync(file, 'r');
+    fs.readSync(fd, head, 0, 16, 0);
+    fs.closeSync(fd);
+    if (head.toString('latin1') !== 'SQLite format 3\0') throw new Error('SQLiteのデータベースファイルではありません');
+    const t = new Database(file, { readonly: true });
+    try {
+      const names = t.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name);
+      for (const need of ['employees', 'attendance', 'payrolls', 'tasks']) {
+        if (!names.includes(need)) throw new Error(`このシステムのバックアップではありません（${need} テーブルがありません）`);
+      }
+      return { employees: t.prepare('SELECT COUNT(*) AS n FROM employees').get().n };
+    } finally {
+      t.close();
+    }
+  },
+
+  // 現在のDBを退避してから、バックアップで置き換える
+  restoreFrom(file) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
+    const keep = `${dbPath}.before-restore-${stamp}`;
+    conn.close();
+    try {
+      fs.copyFileSync(dbPath, keep);
+      for (const ext of ['-wal', '-shm']) if (fs.existsSync(dbPath + ext)) fs.unlinkSync(dbPath + ext);
+      fs.copyFileSync(file, dbPath);
+    } finally {
+      conn = open();
+    }
+    return keep;
+  },
+};
 
 module.exports = db;

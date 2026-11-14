@@ -1,4 +1,6 @@
 process.env.TZ = process.env.TZ || 'Asia/Tokyo';
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
@@ -16,10 +18,43 @@ const PORT = process.env.PORT || 3100;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
+// クラウド上（Render等）では本番扱い：管理者パスワード未設定のまま管理画面を開けないようにする
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
+app.set('trust proxy', 1); // Render等のロードバランサ経由で正しい接続元IPを取得
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'same-origin');
+  if (IS_PRODUCTION) res.set('Strict-Transport-Security', 'max-age=31536000');
+  next();
+});
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// 死活監視用（認証なし・情報を返さない）
+app.get('/healthz', (req, res) => res.send('ok'));
+
+// ---------- 総当たり対策：一定回数失敗すると一時的にロック ----------
+const failures = new Map(); // key → { count, until }
+const MAX_FAILS = 5;
+const LOCK_MS = 15 * 60 * 1000;
+function isLocked(key) {
+  const f = failures.get(key);
+  if (f && f.until && f.until > Date.now()) return Math.ceil((f.until - Date.now()) / 60000);
+  if (f && f.until) failures.delete(key);
+  return 0;
+}
+function recordFail(key, max = MAX_FAILS) {
+  const f = failures.get(key) || { count: 0, until: 0 };
+  f.count++;
+  if (f.count >= max) { f.until = Date.now() + LOCK_MS; f.count = 0; }
+  failures.set(key, f);
+}
+function clearFail(key) { failures.delete(key); }
 
 // ---------- 認証：打刻画面以外は管理者のみ ----------
 function safeEqual(a, b) {
@@ -33,11 +68,20 @@ app.use((req, res, next) => {
   res.locals.yen = (v) => (Number(v) || 0).toLocaleString('ja-JP');
   res.locals.path = req.path;
   if (req.path.startsWith('/punch')) return next();
-  if (!ADMIN_PASSWORD) { req.actor = '管理者（開発モード）'; return next(); }
+  res.set('Cache-Control', 'no-store'); // 給与情報をブラウザ・中継サーバーに残さない
+  if (!ADMIN_PASSWORD) {
+    if (IS_PRODUCTION) return res.status(503).send('管理者パスワード（ADMIN_PASSWORD）が設定されていません。ホスティングサービスの環境変数で設定してください。');
+    req.actor = '管理者（開発モード）';
+    return next();
+  }
+  const ipKey = `admin:${req.ip}`;
+  const locked = isLocked(ipKey);
+  if (locked) return res.status(429).send(`ログインに続けて失敗したため、約${locked}分間ロックしています`);
   const [scheme, encoded] = (req.headers.authorization || '').split(' ');
   if (scheme === 'Basic' && encoded) {
     const [u, ...rest] = Buffer.from(encoded, 'base64').toString().split(':');
-    if (safeEqual(u, ADMIN_USER) && safeEqual(rest.join(':'), ADMIN_PASSWORD)) { req.actor = u; return next(); }
+    if (safeEqual(u, ADMIN_USER) && safeEqual(rest.join(':'), ADMIN_PASSWORD)) { clearFail(ipKey); req.actor = u; return next(); }
+    recordFail(ipKey);
   }
   res.set('WWW-Authenticate', 'Basic realm="roumu", charset="UTF-8"').status(401).send('認証が必要です');
 });
@@ -172,8 +216,18 @@ app.get('/punch', (req, res) => {
 app.post('/punch', (req, res) => {
   const { code, pin, action, work_place } = req.body;
   const back = (key, msg) => res.redirect(`/punch?${key}=${encodeURIComponent(msg)}`);
+  const codeKey = `punch:${(code || '').trim()}`;
+  const ipKey = `punchip:${req.ip}`;
+  const locked = isLocked(codeKey) || isLocked(ipKey);
+  if (locked) return back('err', `PINの入力に続けて失敗したため、約${locked}分間打刻できません。管理者に連絡してください`);
   const emp = db.prepare('SELECT * FROM employees WHERE code = ?').get((code || '').trim());
-  if (!emp || !safeEqual(emp.pin, (pin || '').trim())) return back('err', '社員番号またはPINが正しくありません');
+  if (!emp || !safeEqual(emp.pin, (pin || '').trim())) {
+    recordFail(codeKey);
+    recordFail(ipKey, 20); // 同じオフィス（同一IP）の全員を巻き込まないよう、IP単位は緩めに
+    return back('err', '社員番号またはPINが正しくありません');
+  }
+  clearFail(codeKey);
+  clearFail(ipKey);
   const { date, time } = D.nowJst();
   if (emp.leave_date && emp.leave_date < date) return back('err', '退職済みのため打刻できません');
   if (emp.hire_date > date) return back('err', `入社日（${emp.hire_date}）より前は打刻できません`);
@@ -569,12 +623,45 @@ app.post('/settings', (req, res) => {
   res.redirect('/settings?msg=' + encodeURIComponent('保存しました'));
 });
 
+// ---------- バックアップ・復元（アカウント間のデータ移行にも使用） ----------
+app.get('/settings/backup', async (req, res) => {
+  const tmp = path.join(os.tmpdir(), `roumu-backup-${process.pid}-${Date.now()}.db`);
+  try {
+    await db.backupTo(tmp);
+    const { date, time } = D.nowJst();
+    audit(req.actor, 'バックアップ取得', 'database', '');
+    res.download(tmp, `roumu-backup-${date}-${time.replace(':', '')}.db`, () => fs.unlink(tmp, () => {}));
+  } catch (e) {
+    fs.unlink(tmp, () => {});
+    res.status(500).send('バックアップの作成に失敗しました：' + e.message);
+  }
+});
+
+app.post('/settings/restore', express.raw({ type: 'application/octet-stream', limit: '200mb' }), (req, res) => {
+  if (req.get('X-Confirm-Restore') !== 'yes') return res.status(400).json({ error: '確認ヘッダーがありません' });
+  if (!req.body || !req.body.length) return res.status(400).json({ error: 'ファイルが空です' });
+  const tmp = path.join(os.tmpdir(), `roumu-restore-${process.pid}-${Date.now()}.db`);
+  try {
+    fs.writeFileSync(tmp, req.body);
+    const info = db.validateBackup(tmp);
+    audit(req.actor, 'バックアップから復元（実行前）', 'database', `従業員${info.employees}名のデータで置き換え`);
+    const kept = db.restoreFrom(tmp);
+    audit(req.actor, 'バックアップから復元', 'database', `従業員${info.employees}名 / 復元前のデータは ${path.basename(kept)} に退避`);
+    res.json({ ok: true, employees: info.employees });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  } finally {
+    fs.unlink(tmp, () => {});
+  }
+});
+
 app.get('/audit', (req, res) => {
   const logs = db.prepare('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 500').all();
   res.render('audit', { title: '操作ログ', logs });
 });
 
 if (require.main === module) {
+  if (process.env.SEED_DEMO === 'true') require('./seed').seed();
   app.listen(PORT, () => {
     console.log(`勤怠・給与・労務システム起動: http://localhost:${PORT}`);
     if (!ADMIN_PASSWORD) console.warn('⚠ ADMIN_PASSWORD が未設定です（開発モード：管理画面に認証がかかっていません）');

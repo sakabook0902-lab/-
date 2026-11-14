@@ -1,13 +1,15 @@
 // デモ用サンプルデータ投入（架空の従業員3名・直近2ヶ月分の勤怠）
 // 使い方: npm run seed  ※ 既存データがある場合は何もしません
+// 環境変数 SEED_DEMO=true で起動した場合も、DBが空ならサーバー起動時に自動投入されます（デモ環境用）
 process.env.TZ = process.env.TZ || 'Asia/Tokyo';
 const db = require('./db');
 const D = require('./lib/dates');
 const proc = require('./lib/procedures');
 
+function seed() {
 if (db.prepare('SELECT COUNT(*) AS n FROM employees').get().n > 0) {
   console.log('従業員データが既にあるため、サンプル投入をスキップしました');
-  process.exit(0);
+  return false;
 }
 
 const emps = [
@@ -55,3 +57,8 @@ db.transaction(() => {
 })();
 
 console.log('サンプルデータを投入しました（従業員3名、PIN: 1111 / 2222 / 3333）');
+return true;
+}
+
+if (require.main === module) seed();
+module.exports = { seed };
