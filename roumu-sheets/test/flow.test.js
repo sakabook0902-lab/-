@@ -171,6 +171,7 @@ test('シートで日付型・時刻型に変換された値も正しく読め�
   assert.strictEqual(ctx.normalize_('time', '9:00'), '09:00');
   assert.strictEqual(ctx.normalize_('bool', 'TRUE'), true);
   assert.strictEqual(ctx.normalize_('text', 1001), '1001');
+  assert.strictEqual(ctx.normalize_('date', "'2026-11-01"), '2026-11-01');
 });
 
 test('デモデータ投入 → 給与計算 → データ消去', () => {

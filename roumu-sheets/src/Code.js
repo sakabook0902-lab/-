@@ -117,6 +117,7 @@ function isDate_(v) { return Object.prototype.toString.call(v) === '[object Date
 
 function normalize_(type, v) {
   if (v === null || v === undefined) v = '';
+  if (typeof v === 'string' && v.charAt(0) === "'") v = v.slice(1); // 文字列化の印 ' が値に残った場合
   switch (type) {
     case 'num': return v === '' ? 0 : Number(v) || 0;
     case 'numOrNull': return v === '' ? null : Number(v) || null;

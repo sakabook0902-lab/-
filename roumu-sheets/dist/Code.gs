@@ -2,7 +2,7 @@
 // 勤怠・給与計算・労務手続き管理（Googleスプレッドシート版）
 // このファイルは scripts/build.js で自動生成しています。直接編集せず、
 // roumu-sheets/src/ と roumu/src/lib/ を編集してからビルドしてください。
-// 生成日時: 2026-11-14T07:10:00.074Z
+// 生成日時: 2026-11-14T07:20:15.377Z
 // ============================================================
 
 // ---- 計算ロジック（Node版と共通のモジュールを読み込み順に依存しない形で登録） ----
@@ -788,6 +788,7 @@ function isDate_(v) { return Object.prototype.toString.call(v) === '[object Date
 
 function normalize_(type, v) {
   if (v === null || v === undefined) v = '';
+  if (typeof v === 'string' && v.charAt(0) === "'") v = v.slice(1); // 文字列化の印 ' が値に残った場合
   switch (type) {
     case 'num': return v === '' ? 0 : Number(v) || 0;
     case 'numOrNull': return v === '' ? null : Number(v) || null;
