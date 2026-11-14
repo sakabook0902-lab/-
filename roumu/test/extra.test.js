@@ -76,3 +76,13 @@ test('全銀データ：120桁・合計・カナ変換', () => {
   const bad = buildTransferFile(company, '2026-11-25', [{ holderName: 'テスト', amount: 1000 }]);
   assert.ok(bad.errors.length);
 });
+
+test('給与：月の途中の入社・退職は要確認メモを出す', () => {
+  const att = { worked: 4800, overtimeUpTo60: 0, overtimeOver60: 0, holiday: 0, night: 0 };
+  const a = calculate({ emp: { ...emp, hire_date: '2026-11-16' }, s: S, att, input: {}, ym: '2026-11', payYm: '2026-12' });
+  assert.ok(a.lines.notes.some((x) => x.includes('途中で入社')));
+  const b = calculate({ emp: { ...emp, hire_date: '2026-11-01' }, s: S, att, input: {}, ym: '2026-11', payYm: '2026-12' });
+  assert.ok(!b.lines.notes.some((x) => x.includes('途中')));
+  const c = calculate({ emp: { ...emp, hire_date: '2024-01-01', leave_date: '2026-11-15' }, s: S, att, input: {}, ym: '2026-11', payYm: '2026-12' });
+  assert.ok(c.lines.notes.some((x) => x.includes('途中で退職')));
+});

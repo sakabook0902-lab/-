@@ -1,15 +1,17 @@
 # CLAUDE.md — 勤怠・給与・労務（Googleスプレッドシート / Apps Script版）
 
-Googleスプレッドシートにバインドした Apps Script（V8）。打刻はWebアプリ（`doGet` + `src/punch.html`）、総務の操作はスプレッドシートの「労務」メニュー。
+Googleスプレッドシートにバインドした Apps Script（V8）。人事労務freeeのような**Webアプリ（`doGet` + `src/app.html`）**で、従業員マイページと管理画面を1つのURLで提供する。スプレッドシートはデータの保存場所（「労務」メニューは補助）。
 画面・メッセージ・コメントはすべて日本語。利用者はITに詳しくない総務担当者と従業員。
 
 ## 構成
 - `src/Code.js`：本体（シート定義 `SHEETS`、シート入出力、メニュー、打刻、給与計算、明細PDF、労務タスク、ダッシュボード、通知、onEdit の証跡）
-- `src/punch.html`：打刻画面（ビルド時に `HTML_PUNCH` 変数として埋め込む）
+- `src/WebApp.js`：Webアプリのサーバー側。画面からは `api({token, action, data})` だけを呼ぶ。`auth.*`（ログイン）／`me.*`（従業員本人のデータのみ）／`adm.*`（管理者のみ）。セッションは CacheService（6時間）
+- `src/app.html`：画面（1ページのアプリ。ビルド時に `HTML_APP` 変数として埋め込む）。表示する値は必ず `esc()` でエスケープする
+- 賞与（`roumu/src/lib/bonus.js`）・年末調整（`yearEnd.js`）・全銀振込データ（`zengin.js`）も共通ライブラリ
 - `src/appsscript.json`：マニフェスト（タイムゾーン Asia/Tokyo、Webアプリは「自分として実行」）
 - **計算ロジックはサーバー版と共通**：`../roumu/src/lib/*.js`（勤怠・給与・源泉税・標準報酬・有給・手続き）。`scripts/build.js` がモジュール登録形式（`__req('payroll')`）で `dist/Code.gs` に同梱する。**計算の修正は `roumu/src/lib` 側で行う**（Node版のテスト `roumu/test` も通すこと）
 - `dist/Code.gs`：利用者が Apps Script に貼り付ける1ファイル（生成物。直接編集しない）
-- `test/gas-mock.js`：SpreadsheetApp 等の最小モック。`test/flow.test.js` で主要フローを検証
+- `test/gas-mock.js`：SpreadsheetApp 等の最小モック。`test/flow.test.js`（メニュー操作）と `test/webapp.test.js`（Webアプリの api）で主要フローを検証
 
 ## コマンド
 - `npm run build` → `dist/Code.gs` を生成

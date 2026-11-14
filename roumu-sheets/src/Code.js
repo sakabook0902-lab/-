@@ -7,11 +7,14 @@ var Leave = __req('leave');
 var Payroll = __req('payroll');
 var Proc = __req('procedures');
 var SR = __req('standardRemuneration');
+var Bonus = __req('bonus');
+var YearEnd = __req('yearEnd');
+var Zengin = __req('zengin');
 
 // ---------- シート定義 [キー, 見出し, 型] ----------
 // 型: text / num / numOrNull / bool / date / time / ym / hours（表示用）
 var EARN_LABELS = ['基本給', '役職手当', '固定残業代', '超過残業手当', '休日労働手当', '深夜労働手当', 'インセンティブ', 'インセンティブ割増', 'その他手当', '通勤手当（非課税）', '欠勤控除'];
-var DED_LABELS = ['健康保険料', '子ども・子育て支援金', '厚生年金保険料', '雇用保険料', '源泉所得税', '住民税', 'その他控除'];
+var DED_LABELS = ['健康保険料', '子ども・子育て支援金', '厚生年金保険料', '雇用保険料', '源泉所得税', '住民税', 'その他控除', '年末調整過不足'];
 
 var SHEETS = {
   dashboard: { name: 'ダッシュボード' },
@@ -27,6 +30,8 @@ var SHEETS = {
       ['social_insurance', '社会保険加入', 'bool'], ['employment_insurance', '雇用保険加入', 'bool'], ['health_std', '健保標準報酬月額', 'numOrNull'],
       ['pension_std', '厚年標準報酬月額', 'numOrNull'], ['tax_column', '税区分（甲/乙）', 'text'], ['dependents', '扶養人数（源泉）', 'num'],
       ['resident_tax_june', '住民税6月分', 'num'], ['resident_tax_monthly', '住民税7月〜翌5月分', 'num'], ['slip_consent', '明細メール配信の同意', 'bool'],
+      ['bank_code', '振込先 銀行番号', 'text'], ['bank_name', '振込先 銀行名（カナ）', 'text'], ['branch_code', '振込先 支店番号', 'text'], ['branch_name', '振込先 支店名（カナ）', 'text'],
+      ['account_type', '振込先 預金種目', 'text'], ['account_number', '振込先 口座番号', 'text'], ['account_holder', '振込先 口座名義（カナ）', 'text'],
     ],
   },
   attendance: {
@@ -45,7 +50,7 @@ var SHEETS = {
     cols: [
       ['ym', '勤怠月', 'ym'], ['code', '社員番号', 'text'], ['name', '氏名', 'text'], ['incentive', 'インセンティブ', 'num'], ['absenceDays', '欠勤日数', 'num'],
       ['otherAllowanceLabel', 'その他手当（名称）', 'text'], ['otherAllowance', 'その他手当（金額）', 'num'], ['otherDeductionLabel', 'その他控除（名称）', 'text'],
-      ['otherDeduction', 'その他控除（金額）', 'num'], ['withholdingOverride', '源泉所得税（手入力）', 'text'], ['note', 'メモ', 'text'],
+      ['otherDeduction', 'その他控除（金額）', 'num'], ['withholdingOverride', '源泉所得税（手入力）', 'text'], ['yearEndAdjustment', '年末調整過不足', 'num'], ['note', 'メモ', 'text'],
     ],
   },
   payroll: {
@@ -65,6 +70,29 @@ var SHEETS = {
     cols: [
       ['due_date', '期限', 'date'], ['status', '状態', 'text'], ['category', '区分', 'text'], ['title', '手続き', 'text'], ['name', '対象者', 'text'],
       ['basis', '根拠・期限の考え方', 'text'], ['note', 'メモ（提出日など）', 'text'], ['completed_at', '完了日', 'date'], ['key', '管理キー（編集しない）', 'text'],
+    ],
+  },
+  bonus: {
+    name: '賞与', color: '#d97706',
+    cols: [
+      ['pay_date', '支給日', 'date'], ['code', '社員番号', 'text'], ['name', '氏名', 'text'], ['status', '状態', 'text'], ['amount', '賞与額', 'num'],
+      ['rate', '源泉 算出率（%）', 'text'], ['prev_salary', '前月の社保控除後給与', 'num'], ['dependents', '扶養人数', 'num'], ['std', '標準賞与額', 'num'],
+      ['health_std', '健保 標準賞与額', 'num'], ['care', '介護保険対象', 'bool'], ['health', '健康保険料', 'num'], ['child', '子ども・子育て支援金', 'num'],
+      ['pension', '厚生年金保険料', 'num'], ['employment', '雇用保険料', 'num'], ['withholding', '源泉所得税', 'num'], ['deduction_total', '控除合計', 'num'],
+      ['net', '差引支給額', 'num'], ['notes', '要確認事項', 'text'], ['confirmed_at', '確定日時', 'text'], ['pdf', '明細PDF', 'text'],
+    ],
+  },
+  yearEnd: {
+    name: '年末調整', color: '#0891b2',
+    cols: [
+      ['year', '対象年', 'text'], ['code', '社員番号', 'text'], ['name', '氏名', 'text'], ['status', '状態', 'text'],
+      ['salaryIncome', '給与等の支払金額', 'num'], ['withheld', '源泉徴収済み税額', 'num'], ['socialWithheld', '給与等から控除した社会保険料', 'num'],
+      ['socialDeclared', '申告による社会保険料', 'num'], ['lifeInsurance', '生命保険料控除', 'num'], ['earthquake', '地震保険料控除', 'num'],
+      ['spouseType', '配偶者控除（なし/一般/老人）', 'text'], ['spouseSpecial', '配偶者特別控除', 'num'], ['depGeneral', '一般扶養（人）', 'num'],
+      ['depSpecific', '特定扶養（人）', 'num'], ['depElderly', '老人扶養（人）', 'num'], ['depElderlyTogether', '同居老親等（人）', 'num'],
+      ['otherDeduction', 'その他の所得控除', 'num'], ['housingLoan', '住宅借入金等特別控除', 'num'], ['salaryIncomeAfter', '給与所得控除後の金額', 'num'],
+      ['deductionTotal', '所得控除の合計', 'num'], ['taxableIncome', '課税所得', 'num'], ['annualTax', '年調年税額', 'num'],
+      ['diff', '過不足（＋徴収／−還付）', 'num'], ['reflected', '12月給与に反映済み', 'bool'], ['calculated_at', '計算日時', 'text'],
     ],
   },
   changes: {
@@ -102,6 +130,20 @@ var SETTING_DEFS = [
   ['notify_emails', '通知先メールアドレス（カンマ区切り）', '', '毎朝の通知の送り先'],
   ['slack_webhook', 'Slack Incoming Webhook URL（任意）', '', '設定するとSlackにも通知'],
   ['punch_require_pin', '打刻時に常にPINを求める（TRUE/FALSE）', 'FALSE', 'FALSEならGoogleアカウントで本人確認できた人はPIN不要'],
+  ['admin_emails', '管理者のGoogleアカウント（カンマ区切り）', '', 'ここに入れた人は管理画面を使える（スプレッドシートのオーナーは常に管理者）'],
+  ['zengin_client_code', '振込：委託者コード（10桁）', '', '銀行と総合振込の契約をしたときに通知される番号'],
+  ['zengin_client_name', '振込：委託者名（カナ）', '', '例：ｶ)ﾆｼﾞｶﾝｺﾞﾃﾝｼｮｸ'],
+  ['company_bank_code', '振込：振込元 銀行番号（4桁）', '', ''],
+  ['company_bank_name', '振込：振込元 銀行名（カナ）', '', ''],
+  ['company_branch_code', '振込：振込元 支店番号（3桁）', '', ''],
+  ['company_branch_name', '振込：振込元 支店名（カナ）', '', ''],
+  ['company_account_type', '振込：振込元 預金種目（普通/当座）', '普通', ''],
+  ['company_account_number', '振込：振込元 口座番号（7桁）', '', ''],
+  ['acct_salary', '仕訳：給与の勘定科目', '給料手当', ''],
+  ['acct_bonus', '仕訳：賞与の勘定科目', '賞与', ''],
+  ['acct_commute', '仕訳：通勤手当の勘定科目', '旅費交通費', ''],
+  ['acct_deposit', '仕訳：預り金の勘定科目', '預り金', '社会保険料・源泉所得税・住民税'],
+  ['acct_payable', '仕訳：差引支給額の勘定科目', '未払金', '支給日に普通預金で支払う前提'],
 ];
 
 // ============================================================
@@ -228,7 +270,8 @@ function onOpen() {
     .addSeparator()
     .addItem('毎朝の自動更新・通知を設定', 'menuInstallTrigger')
     .addItem('通知のテスト送信', 'menuTestNotify')
-    .addItem('打刻用URLを表示', 'menuShowUrl')
+    .addItem('Webアプリ（従業員マイページ・管理画面）のURLを表示', 'menuShowUrl')
+    .addItem('管理者パスワードを設定（Googleアカウントで入れない場合用）', 'menuSetAdminPassword')
     .addItem('初期設定（シート作成）', 'menuSetup')
     .addSeparator()
     .addItem('デモデータを投入（従業員が空のときのみ）', 'menuSeedDemo')
@@ -344,8 +387,8 @@ function payYmOf_(ym, s) { return Dates.ymAdd(ym, Number(s.pay_month_offset || 0
 // 打刻Webアプリ
 // ============================================================
 function doGet() {
-  return HtmlService.createHtmlOutput(HTML_PUNCH)
-    .setTitle('打刻')
+  return HtmlService.createHtmlOutput(HTML_APP)
+    .setTitle(getSettings_().company_name + ' 勤怠・給与')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
@@ -391,10 +434,18 @@ function authPunch_(code, pin) {
 }
 
 function punch(action, code, pin, place) {
+  try {
+    return punchCore_(authPunch_(code, pin), action, place);
+  } catch (e) {
+    return { ok: false, msg: e.message };
+  }
+}
+
+// 打刻の本体（本人確認済みの従業員で実行）
+function punchCore_(emp, action, place) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var emp = authPunch_(code, pin);
     var n = Dates.nowJst();
     var date = n.date, time = n.time;
     if (emp.leave_date && emp.leave_date < date) throw new Error('退職済みのため打刻できません');
@@ -496,7 +547,7 @@ function calcPayroll(ym) {
     var inp = inputs.filter(function (i) { return i.ym === ym && i.code === e.code; })[0] || {};
     var input = {
       incentive: inp.incentive, absenceDays: inp.absenceDays, otherAllowance: inp.otherAllowance, otherAllowanceLabel: inp.otherAllowanceLabel,
-      otherDeduction: inp.otherDeduction, otherDeductionLabel: inp.otherDeductionLabel,
+      otherDeduction: inp.otherDeduction, otherDeductionLabel: inp.otherDeductionLabel, yearEndAdjustment: inp.yearEndAdjustment,
       withholdingOverride: inp.withholdingOverride === '' || inp.withholdingOverride === undefined ? '' : Number(inp.withholdingOverride),
     };
     var att = monthAttendance_(e.code, ym, s, recs).summary;
@@ -587,17 +638,41 @@ function detectWageChanges_() {
 // ============================================================
 // 給与明細
 // ============================================================
+function esc_(t) {
+  return String(t === null || t === undefined ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+}
+function yen_(v) { return Number(v || 0).toLocaleString(); }
+
+var SLIP_CSS = 'body{font-family:sans-serif;font-size:11pt;margin:24px}.slip h1{text-align:center;font-size:18pt}.slip table{border-collapse:collapse;width:100%;margin-top:8px}.slip td,.slip th{border:1px solid #999;padding:5px 8px}.slip .n{text-align:right}.slip .cols{display:flex;gap:12px}.slip .cols>div{flex:1}';
+
+// 給与明細の本文（画面表示とPDFで共通）
+function slipBody_(p, s) {
+  var rowsE = EARN_LABELS.filter(function (l) { return p['e:' + l]; }).map(function (l) { return '<tr><td>' + l + '</td><td class="n">' + yen_(p['e:' + l]) + '</td></tr>'; }).join('');
+  var rowsD = DED_LABELS.filter(function (l) { return p['d:' + l]; }).map(function (l) { return '<tr><td>' + (l === '健康保険料' && p.care ? '健康保険料（介護含む）' : l) + '</td><td class="n">' + yen_(p['d:' + l]) + '</td></tr>'; }).join('');
+  return '<div class="slip"><h1>給与明細書</h1><p><b>' + esc_(p.name) + '</b> 様（' + esc_(p.code) + '）<br>' + p.pay_ym.replace('-', '年') + '月' + esc_(s.pay_day) + '日支給（' + p.ym.replace('-', '年') + '月勤怠分）　' + esc_(s.company_name) + '</p>' +
+    '<table><tr><th>出勤日数</th><th>労働時間</th><th>時間外</th><th>法定休日</th><th>深夜</th></tr><tr><td>' + p.work_days + '日</td><td>' + esc_(p.worked) + '</td><td>' + esc_(p.overtime) + '</td><td>' + esc_(p.holiday) + '</td><td>' + esc_(p.night) + '</td></tr></table>' +
+    '<div class="cols"><div><h3>支給</h3><table>' + rowsE + '<tr><th>総支給額</th><th class="n">' + yen_(p.gross) + '</th></tr></table></div>' +
+    '<div><h3>控除</h3><table>' + rowsD + '<tr><th>控除合計</th><th class="n">' + yen_(p.deduction_total) + '</th></tr></table></div></div>' +
+    '<table><tr><th style="width:50%">差引支給額</th><th class="n" style="font-size:14pt">' + yen_(p.net) + ' 円</th></tr></table></div>';
+}
+
+// 賞与明細の本文
+function bonusSlipBody_(b, s) {
+  var rows = [['健康保険料' + (b.care ? '（介護含む）' : ''), b.health], ['子ども・子育て支援金', b.child], ['厚生年金保険料', b.pension], ['雇用保険料', b.employment], ['源泉所得税', b.withholding]]
+    .filter(function (r) { return r[1]; }).map(function (r) { return '<tr><td>' + r[0] + '</td><td class="n">' + yen_(r[1]) + '</td></tr>'; }).join('');
+  return '<div class="slip"><h1>賞与明細書</h1><p><b>' + esc_(b.name) + '</b> 様（' + esc_(b.code) + '）<br>' + esc_(b.pay_date.replace(/-/g, '/')) + ' 支給　' + esc_(s.company_name) + '</p>' +
+    '<div class="cols"><div><h3>支給</h3><table><tr><td>賞与</td><td class="n">' + yen_(b.amount) + '</td></tr><tr><th>総支給額</th><th class="n">' + yen_(b.amount) + '</th></tr></table></div>' +
+    '<div><h3>控除</h3><table>' + rows + '<tr><th>控除合計</th><th class="n">' + yen_(b.deduction_total) + '</th></tr></table></div></div>' +
+    '<table><tr><th style="width:50%">差引支給額</th><th class="n" style="font-size:14pt">' + yen_(b.net) + ' 円</th></tr></table></div>';
+}
+
 function slipHtml_(p, s) {
-  var y = function (v) { return Number(v || 0).toLocaleString(); };
-  var rowsE = EARN_LABELS.filter(function (l) { return p['e:' + l]; }).map(function (l) { return '<tr><td>' + l + '</td><td class="n">' + y(p['e:' + l]) + '</td></tr>'; }).join('');
-  var rowsD = DED_LABELS.filter(function (l) { return p['d:' + l]; }).map(function (l) { return '<tr><td>' + (l === '健康保険料' && p.care ? '健康保険料（介護含む）' : l) + '</td><td class="n">' + y(p['d:' + l]) + '</td></tr>'; }).join('');
-  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-  return '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:11pt;margin:24px}h1{text-align:center;font-size:18pt}table{border-collapse:collapse;width:100%;margin-top:8px}td,th{border:1px solid #999;padding:5px 8px}.n{text-align:right}.cols{width:100%}.cols td{border:none;vertical-align:top;width:50%;padding:0 6px}</style></head><body>' +
-    '<h1>給与明細書</h1><p><b>' + esc(p.name) + '</b> 様（' + esc(p.code) + '）<br>' + p.pay_ym.replace('-', '年') + '月' + esc(s.pay_day) + '日支給（' + p.ym.replace('-', '年') + '月勤怠分）　' + esc(s.company_name) + '</p>' +
-    '<table><tr><th>出勤日数</th><th>労働時間</th><th>時間外</th><th>法定休日</th><th>深夜</th></tr><tr><td>' + p.work_days + '日</td><td>' + p.worked + '</td><td>' + p.overtime + '</td><td>' + p.holiday + '</td><td>' + p.night + '</td></tr></table>' +
-    '<table class="cols"><tr><td><h3>支給</h3><table>' + rowsE + '<tr><th>総支給額</th><th class="n">' + y(p.gross) + '</th></tr></table></td>' +
-    '<td><h3>控除</h3><table>' + rowsD + '<tr><th>控除合計</th><th class="n">' + y(p.deduction_total) + '</th></tr></table></td></tr></table>' +
-    '<table><tr><th style="width:50%">差引支給額</th><th class="n" style="font-size:14pt">' + y(p.net) + ' 円</th></tr></table></body></html>';
+  return '<html><head><meta charset="utf-8"><style>' + SLIP_CSS + '</style></head><body>' + slipBody_(p, s) + '</body></html>';
+}
+
+function slipPdf_(html, name) {
+  return Utilities.newBlob('<html><head><meta charset="utf-8"><style>' + SLIP_CSS + '</style></head><body>' + html + '</body></html>', 'text/html', 'slip.html')
+    .getAs('application/pdf').setName(name);
 }
 
 function slipFolder_(payYm) {
@@ -625,7 +700,7 @@ function makeSlips(ym) {
   if (!pays.length) return ym + '勤怠分の確定済み給与がありません。先に「給与を確定」を実行してください';
   var folder = slipFolder_(pays[0].pay_ym);
   pays.forEach(function (p) {
-    var blob = Utilities.newBlob(slipHtml_(p, s), 'text/html', 'slip.html').getAs('application/pdf').setName('給与明細_' + p.pay_ym + '_' + p.code + '_' + p.name + '.pdf');
+    var blob = slipPdf_(slipBody_(p, s), '給与明細_' + p.pay_ym + '_' + p.code + '_' + p.name + '.pdf');
     var old = folder.getFilesByName(blob.getName());
     while (old.hasNext()) old.next().setTrashed(true);
     var file = folder.createFile(blob);
@@ -895,8 +970,8 @@ function menuShowUrl() {
   var url = '';
   try { url = ScriptApp.getService().getUrl() || ''; } catch (e) { url = ''; }
   var msg = url
-    ? '打刻用URL：\n' + url + '\n\n従業員にこのURLを案内し、スマホの「ホーム画面に追加」をしてもらってください。'
-    : 'まだWebアプリとして公開されていません。\n\n1. 画面右上「デプロイ」→「新しいデプロイ」\n2. 種類の選択で「ウェブアプリ」\n3. 次のユーザーとして実行：「自分」\n4. アクセスできるユーザー：「（会社名）内の全員」（Google Workspaceの場合）\n5. 「デプロイ」→ 表示されたURLが打刻用URLです';
+    ? 'Webアプリ（従業員マイページ・管理画面）のURL：\n' + url + '\n\n・従業員：このURLで打刻・勤怠・給与明細・有給を確認できます（スマホの「ホーム画面に追加」推奨）\n・管理者：同じURLを開くと管理画面に入れます（設定シートの「管理者のGoogleアカウント」に登録した人とオーナー）'
+    : 'まだWebアプリとして公開されていません。\n\n1. 拡張機能 → Apps Script を開き、右上「デプロイ」→「新しいデプロイ」\n2. 種類の選択で「ウェブアプリ」\n3. 次のユーザーとして実行：「自分」\n4. アクセスできるユーザー：「（会社名）内の全員」（Google Workspaceの場合）または「Googleアカウントを持つ全員」\n5. 「デプロイ」→ 表示されたURLが、従業員マイページ・管理画面の共通URLです';
   ui_alert_(msg);
 }
 

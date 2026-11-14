@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --border:#dfe3e8; --text:#1f2933; --muted:#6b7280; --accent:#2563eb; --accent-weak:#eff6ff; --ok:#16a34a; --danger:#dc2626; --warn:#d97706; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
+  a { color:var(--accent); cursor:pointer; text-decoration:none; }
+  header { background:var(--panel); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; position:sticky; top:0; z-index:5; }
+  header .brand { font-weight:700; font-size:15px; }
+  header .me { margin-left:auto; color:var(--muted); font-size:13px; display:flex; gap:10px; align-items:center; }
+  nav { display:flex; flex-wrap:wrap; gap:2px; width:100%; }
+  nav a { padding:6px 10px; border-radius:6px; color:var(--text); font-size:13px; }
+  nav a.on { background:var(--accent-weak); color:var(--accent); font-weight:700; }
+  main { max-width:1440px; margin:0 auto; padding:18px 16px 60px; }
+  h1 { font-size:20px; margin:4px 0 14px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .stat { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
+  .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:12px; }
+  .stat.danger { border-color:var(--danger); } .stat.warn { border-color:var(--warn); }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .between { justify-content:space-between; }
+  table { width:100%; border-collapse:collapse; background:var(--panel); }
+  th, td { border:1px solid var(--border); padding:6px 8px; text-align:left; font-size:13px; vertical-align:top; }
+  th { background:#f0f2f5; white-space:nowrap; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .wrap { overflow-x:auto; }
+  tr.sun td:first-child { color:var(--danger); } tr.sat td:first-child { color:var(--accent); }
+  tr.bad td { background:#fff5f5; }
+  input, select, textarea { font:inherit; padding:7px 9px; border:1px solid var(--border); border-radius:6px; background:#fff; }
+  td input { padding:4px 6px; width:90px; } td input.w { width:150px; } td input.s { width:64px; }
+  button { font:inherit; border:none; border-radius:6px; padding:8px 14px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.sub { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  button.danger { background:var(--danger); } button.small { padding:4px 9px; font-size:12px; white-space:nowrap; }
+  table.wide td:first-child { min-width:170px; } td .note { font-size:11px; color:var(--warn); margin-top:2px; } td .stack { display:flex; flex-direction:column; gap:3px; } td .acts { display:flex; flex-wrap:wrap; gap:4px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; background:#e5e7eb; white-space:nowrap; }
+  .badge.ok { background:#dcfce7; color:var(--ok); } .badge.danger { background:#fee2e2; color:var(--danger); } .badge.warn { background:#fef3c7; color:#92400e; }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .alert { padding:10px 14px; border-radius:8px; margin-bottom:12px; white-space:pre-wrap; }
+  .alert.err { background:#fef2f2; border:1px solid var(--danger); color:var(--danger); }
+  .alert.ok { background:#ecfdf5; border:1px solid var(--ok); color:#065f46; }
+  .alert.warn { background:#fffbeb; border:1px solid var(--warn); color:#92400e; }
+  .form { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px 14px; }
+  .form label { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted); }
+  .form label.chk { flex-direction:row; align-items:center; gap:6px; color:var(--text); font-size:13px; }
+  .form input, .form select { color:var(--text); font-size:14px; }
+  fieldset { border:1px solid var(--border); border-radius:8px; padding:10px 14px 14px; margin:0 0 14px; }
+  legend { font-weight:700; padding:0 6px; }
+  .punch { max-width:440px; margin:0 auto; text-align:center; }
+  .clock { font-size:52px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .pbtns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .pbtns button { padding:18px; font-size:17px; } .in { background:var(--ok) !important; } .out { background:var(--danger) !important; } .brk { background:#64748b !important; }
+  .kv div { display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding:6px 0; } .kv div span:first-child { color:var(--muted); }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:flex-start; justify-content:center; padding:24px 12px; z-index:20; overflow:auto; }
+  .modal .box { background:#fff; border-radius:10px; max-width:860px; width:100%; padding:18px; }
+  .slip h1 { text-align:center; font-size:20px; } .slip table { margin-top:8px; } .slip .n { text-align:right; } .slip .cols { display:flex; gap:12px; flex-wrap:wrap; } .slip .cols > div { flex:1; min-width:260px; }
+  .loading { position:fixed; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),#93c5fd); animation:ld 1s linear infinite; z-index:30; }
+  @keyframes ld { from { background-position:0 0; } to { background-position:200px 0; } }
+  .login { max-width:400px; margin:40px auto; }
+  .tabs { display:flex; gap:4px; margin-bottom:12px; } .tabs a { flex:1; text-align:center; padding:8px; border-radius:6px; background:#eef2f7; color:var(--text); } .tabs a.on { background:var(--accent); color:#fff; }
+  @media print { header, .noprint { display:none !important; } .modal { position:static; background:none; padding:0; } body { background:#fff; } }
+</style>
+</head>
+<body>
+<div id="loading" class="loading" style="display:none"></div>
+<header id="header" style="display:none"></header>
+<main id="main"><p class="muted">読み込み中…</p></main>
+<div id="modal"></div>
+<script>
+var S = { token: null, me: null, company: '', mode: 'me', view: '', params: {} };
+var WD = '日月火水木金土';
+
+function esc(t) { return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function yen(v) { return Number(v || 0).toLocaleString(); }
+function $(id) { return document.getElementById(id); }
+function val(id) { var el = $(id); return el ? el.value.trim() : ''; }
+function todayJst() { var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000); return d; }
+function ymNow() { var d = todayJst(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+function ymAdd(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + ('0' + (m + 1)).slice(-2); }
+function store(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) { return null; } }
+
+function call(action, data) {
+  $('loading').style.display = 'block';
+  return new Promise(function (resolve, reject) {
+    google.script.run.withSuccessHandler(function (r) {
+      $('loading').style.display = 'none';
+      if (r && r.ok) return resolve(r.result);
+      if (r && r.relogin) { logout(true); }
+      reject(new Error(r ? r.error : '通信に失敗しました'));
+    }).withFailureHandler(function (e) { $('loading').style.display = 'none'; reject(e); })
+      .api({ token: S.token, action: action, data: data || {} });
+  });
+}
+
+function flash(msg, type) { var el = $('flash'); if (el) { el.className = 'alert ' + (type || 'ok'); el.textContent = msg; el.style.display = 'block'; window.scrollTo(0, 0); } else alert(msg); }
+function fail(e) { flash(e.message || String(e), 'err'); }
+
+// ---------- 画面切替 ----------
+var ME_NAV = [['home', '打刻・ホーム'], ['attendance', '勤怠'], ['slips', '給与明細'], ['leave', '有給休暇']];
+var ADM_NAV = [['dashboard', 'ダッシュボード'], ['employees', '従業員'], ['attendance', '勤怠'], ['payroll', '給与計算'], ['bonus', '賞与'], ['yearend', '年末調整'], ['tasks', '労務タスク'], ['settings', '設定'], ['logs', '操作ログ']];
+
+function renderHeader() {
+  var nav = (S.mode === 'adm' ? ADM_NAV : ME_NAV).map(function (n) { return '<a class="' + (S.view === n[0] ? 'on' : '') + '" onclick="go(\'' + n[0] + '\')">' + n[1] + '</a>'; }).join('');
+  var sw = '';
+  if (S.me.isAdmin && S.me.isEmployee) sw = '<a onclick="switchMode()">' + (S.mode === 'adm' ? 'マイページへ' : '管理画面へ') + '</a>';
+  $('header').innerHTML = '<span class="brand">' + esc(S.company) + (S.mode === 'adm' ? ' 管理画面' : '') + '</span>' +
+    '<span class="me">' + esc(S.me.name) + ' ' + sw + ' <a onclick="logout()">ログアウト</a></span><nav>' + nav + '</nav>';
+  $('header').style.display = 'flex';
+}
+
+function switchMode() { S.mode = S.mode === 'adm' ? 'me' : 'adm'; go(S.mode === 'adm' ? 'dashboard' : 'home'); }
+
+function go(view, params, msg, type) {
+  S.view = view; S.params = params || {};
+  renderHeader();
+  $('main').innerHTML = '<div id="flash" class="alert" style="display:none"></div><div id="view"><p class="muted">読み込み中…</p></div>';
+  var fn = (S.mode === 'adm' ? ADM : ME)[view];
+  Promise.resolve().then(function () { return fn(S.params); }).then(function () { if (msg) flash(msg, type); }).catch(fail);
+}
+function view(html) { $('view').innerHTML = html; }
+function modal(html) { $('modal').innerHTML = html ? '<div class="modal" onclick="if(event.target===this)modal()"><div class="box">' + html + '</div></div>' : ''; }
+
+// ---------- ログイン ----------
+function start() {
+  S.token = store('roumu_token');
+  call('auth.init').then(function (r) {
+    S.company = r.company;
+    document.title = r.company + ' 勤怠・給与';
+    if (r.token) return loggedIn(r.token, r.me);
+    if (S.token && store('roumu_me')) return loggedIn(S.token, JSON.parse(store('roumu_me')));
+    renderLogin(r);
+  }).catch(function (e) { $('main').innerHTML = '<div class="alert err">' + esc(e.message) + '</div>'; });
+}
+
+function renderLogin(r, tab) {
+  tab = tab || 'emp';
+  $('header').style.display = 'none';
+  $('main').innerHTML = '<div class="login panel"><h1>' + esc(S.company || '') + '</h1>' +
+    '<div class="tabs"><a class="' + (tab === 'emp' ? 'on' : '') + '" id="tEmp">従業員</a><a class="' + (tab === 'adm' ? 'on' : '') + '" id="tAdm">管理者</a></div>' +
+    '<div id="flash" class="alert" style="display:none"></div>' +
+    (tab === 'emp'
+      ? '<div class="form" style="grid-template-columns:1fr"><label>社員番号<input id="lCode" inputmode="numeric" autocomplete="username"></label><label>PIN<input id="lPin" type="password" inputmode="numeric" autocomplete="current-password"></label></div><p><button id="lBtn" style="width:100%">ログイン</button></p><p class="small muted">会社のGoogleアカウントでログインしている場合は自動でログインします。</p>'
+      : '<div class="form" style="grid-template-columns:1fr"><label>管理者パスワード<input id="lPw" type="password" autocomplete="current-password"></label></div><p><button id="lBtn" style="width:100%">ログイン</button></p><p class="small muted">管理者に登録されたGoogleアカウントで開くと自動でログインします。' + (r && r.adminPasswordEnabled === false ? '（管理者パスワードは未設定です）' : '') + '</p>') +
+    '</div>';
+  $('tEmp').onclick = function () { renderLogin(r, 'emp'); };
+  $('tAdm').onclick = function () { renderLogin(r, 'adm'); };
+  $('lBtn').onclick = function () {
+    var p = tab === 'emp' ? call('auth.pin', { code: val('lCode'), pin: val('lPin') }) : call('auth.admin', { password: $('lPw').value });
+    p.then(function (x) { loggedIn(x.token, x.me); }).catch(fail);
+  };
+}
+
+function loggedIn(token, me) {
+  S.token = token; S.me = me;
+  store('roumu_token', token); store('roumu_me', JSON.stringify(me));
+  S.mode = me.isEmployee ? 'me' : 'adm';
+  go(S.mode === 'adm' ? 'dashboard' : 'home');
+}
+
+function logout(silent) {
+  if (!silent) call('auth.logout', { token: S.token }).catch(function () {});
+  store('roumu_token', null); store('roumu_me', null);
+  S.token = null; S.me = null;
+  renderLogin({});
+  if (silent) flash('ログインの有効期限が切れました。もう一度ログインしてください', 'warn');
+}
+
+// ---------- 共通部品 ----------
+function monthNav(ym, fn) {
+  return '<div class="row"><button class="sub small" onclick="' + fn + '(\'' + ymAdd(ym, -1) + '\')">← 前月</button><b>' + ym.replace('-', '年') + '月</b><button class="sub small" onclick="' + fn + '(\'' + ymAdd(ym, 1) + '\')">翌月 →</button></div>';
+}
+function showSlip(id, adm) {
+  call(adm ? 'adm.slip' : 'me.slip', { id: id }).then(function (r) {
+    modal('<div class="row between noprint"><b>' + esc(r.title) + '</b><span><button class="small" onclick="window.print()">印刷・PDF保存</button> <button class="small sub" onclick="modal()">閉じる</button></span></div>' + r.html);
+  }).catch(fail);
+}
+function badgeStatus(st) { return '<span class="badge ' + (st === '確定' || st === '完了' || st === '計算済み' ? 'ok' : st === '未計算' ? '' : 'warn') + '">' + esc(st) + '</span>'; }
+function attTable(r, editable) {
+  var rows = r.days.map(function (d) {
+    var cls = (d.wd === 0 ? 'sun' : d.wd === 6 ? 'sat' : '') + (d.missingOut ? ' bad' : '');
+    var cells = editable
+      ? '<td><input id="i_' + d.date + '" value="' + esc(d.clock_in) + '" placeholder="09:00" class="s"></td><td><input id="o_' + d.date + '" value="' + esc(d.clock_out) + '" placeholder="18:00" class="s"></td><td><input id="b_' + d.date + '" value="' + esc(d.break_minutes) + '" placeholder="60" class="s"></td><td><input id="m_' + d.date + '" value="' + esc(d.note) + '" class="w"></td>'
+      : '<td>' + esc(d.clock_in) + '</td><td>' + esc(d.clock_out) + '</td><td class="n">' + esc(d.break_minutes) + '</td><td>' + esc(d.note) + '</td>';
+    return '<tr class="' + cls + '"><td>' + d.date.slice(5).replace('-', '/') + '（' + WD[d.wd] + '）</td>' + cells +
+      '<td class="n">' + esc(d.worked) + (d.missingOut ? '<span class="badge danger">退勤なし</span>' : '') + '</td><td class="n">' + esc(d.overtime || (d.holiday ? '休' + d.holiday : '')) + '</td><td class="n">' + esc(d.night) + '</td>' +
+      '<td class="small">' + esc(d.place) + (d.leave ? ' <span class="badge ok">有給' + (d.leave < 1 ? '(半)' : '') + '</span>' : '') + (d.edited ? ' ✎' : '') + '</td>' +
+      (editable ? '<td><button class="small sub" onclick="saveAtt(\'' + d.date + '\')">保存</button></td>' : '') + '</tr>';
+  }).join('');
+  return '<div class="wrap"><table><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩(分)</th><th>備考</th><th class="n">実働</th><th class="n">時間外</th><th class="n">深夜</th><th>場所</th>' + (editable ? '<th></th>' : '') + '</tr>' + rows + '</table></div>';
+}
+function sumStats(sm) {
+  return '<div class="stats"><div class="stat"><b>' + sm.workDays + '日</b><span>出勤日数</span></div><div class="stat"><b>' + sm.worked + '</b><span>実働</span></div>' +
+    '<div class="stat"><b>' + sm.overtime + '</b><span>時間外（60h超 ' + sm.over60 + '）</span></div><div class="stat"><b>' + sm.holiday + '</b><span>法定休日</span></div><div class="stat"><b>' + sm.night + '</b><span>深夜</span></div></div>';
+}
+
+// ============================================================
+// 従業員マイページ
+// ============================================================
+var ME = {
+  home: function () {
+    return call('me.home').then(function (r) {
+      var st = r.status, t = st.today || {};
+      var todayTxt = st.today ? (t.in ? '出勤 ' + t.in : '') + (t.breakStart ? '　休憩中（' + t.breakStart + '〜）' : '') + (t.out ? '　退勤 ' + t.out : '') : 'まだ出勤していません';
+      view('<div class="punch panel"><div class="muted" id="dateTxt"></div><div class="clock" id="clock">--:--</div><div class="muted">' + esc(todayTxt) + '</div>' +
+        '<p><select id="place" style="width:100%"><option value="">勤務場所（登録拠点）</option><option>五反田</option><option>赤坂</option><option>リモート</option><option>その他</option></select></p>' +
+        '<div class="pbtns"><button class="in" onclick="punch(\'in\')">出勤</button><button class="out" onclick="punch(\'out\')">退勤</button><button class="brk" onclick="punch(\'break_start\')">休憩開始</button><button class="brk" onclick="punch(\'break_end\')">休憩終了</button></div></div>' +
+        '<div class="stats"><div class="stat"><b>' + st.workDays + '日</b><span>今月の出勤</span></div><div class="stat"><b>' + st.worked + '</b><span>今月の実働</span></div><div class="stat"><b>' + st.overtime + '</b><span>今月の時間外</span></div><div class="stat"><b>' + st.leaveBalance + '日</b><span>有給の残日数</span></div></div>' +
+        (r.latestSlip ? '<div class="panel"><div class="row between"><span>最新の明細：<b>' + esc(r.latestSlip.label) + '</b>　差引支給額 <b>' + yen(r.latestSlip.net) + '円</b></span><button class="small sub" onclick="showSlip(\'' + r.latestSlip.id + '\')">明細を見る</button></div></div>' : ''));
+      tick();
+    });
+  },
+  attendance: function (p) {
+    var ym = p.ym || ymNow();
+    return call('me.attendance', { ym: ym }).then(function (r) {
+      view('<div class="row between"><h1>勤怠</h1>' + monthNav(ym, 'meAtt') + '</div>' + sumStats(r.summary) + attTable(r, false) + '<p class="small muted">修正が必要な場合は総務に連絡してください。✎は総務が修正した日です。</p>');
+    });
+  },
+  slips: function () {
+    return call('me.slips').then(function (list) {
+      view('<h1>給与明細</h1>' + (list.length ? '<div class="wrap"><table><tr><th>明細</th><th class="n">総支給額</th><th class="n">差引支給額</th><th></th></tr>' +
+        list.map(function (x) { return '<tr><td>' + esc(x.label) + '</td><td class="n">' + yen(x.gross) + '</td><td class="n">' + yen(x.net) + '</td><td><button class="small sub" onclick="showSlip(\'' + x.id + '\')">表示</button></td></tr>'; }).join('') + '</table></div>'
+        : '<p class="muted">まだ明細はありません。</p>'));
+    });
+  },
+  leave: function () {
+    return call('me.leave').then(function (r) {
+      var ob = r.obligation;
+      view('<h1>有給休暇</h1><div class="stats"><div class="stat"><b>' + r.balance + '日</b><span>残日数</span></div>' +
+        (ob ? '<div class="stat ' + (ob.level === 'ok' ? '' : ob.level) + '"><b>' + ob.taken + ' / 5日</b><span>年5日の取得（' + ob.periodEnd + 'の前日まで）</span></div>' : '') +
+        (r.nextGrant ? '<div class="stat"><b>' + r.nextGrant.days + '日</b><span>次回付与 ' + r.nextGrant.date + '</span></div>' : '') + '</div>' +
+        '<div class="grid2"><div class="panel"><h2>付与</h2><table><tr><th>付与日</th><th class="n">付与</th><th class="n">使用</th><th>時効</th></tr>' +
+        r.grants.map(function (g) { return '<tr><td>' + g.date + '</td><td class="n">' + g.days + '</td><td class="n">' + g.used + '</td><td>' + g.expires + '</td></tr>'; }).join('') + '</table></div>' +
+        '<div class="panel"><h2>取得履歴</h2><table><tr><th>取得日</th><th>日数</th><th>備考</th></tr>' +
+        r.usages.map(function (u) { return '<tr><td>' + u.date + '</td><td>' + u.days + '</td><td>' + esc(u.note) + '</td></tr>'; }).join('') + '</table><p class="small muted">有給の申請は総務に連絡してください。</p></div></div>');
+    });
+  },
+};
+function meAtt(ym) { go('attendance', { ym: ym }); }
+var clockTimer;
+function tick() {
+  clearInterval(clockTimer);
+  var f = function () { var d = todayJst(); if (!$('clock')) return clearInterval(clockTimer); $('clock').textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); $('dateTxt').textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日（' + WD[d.getDay()] + '）'; };
+  f(); clockTimer = setInterval(f, 1000);
+}
+function punch(action) {
+  call('me.punch', { action: action, place: val('place') }).then(function (r) {
+    if (!r.ok) return flash(r.msg, 'err');
+    ME.home().then(function () { flash(r.msg, 'ok'); });
+  }).catch(fail);
+}
+
+// ============================================================
+// 管理画面
+// ============================================================
+var EMP_GROUPS = [
+  ['基本情報（労働者名簿）', ['code', 'name', 'name_kana', 'email', 'birth_date', 'gender', 'address', 'job', 'location', 'employment_type', 'hire_date', 'pin']],
+  ['給与（固定的賃金）', ['base_salary', 'position_allowance', 'commute_allowance', 'fixed_ot_pay', 'fixed_ot_hours']],
+  ['社会保険・税', ['social_insurance', 'employment_insurance', 'health_std', 'pension_std', 'tax_column', 'dependents', 'resident_tax_june', 'resident_tax_monthly', 'slip_consent']],
+  ['振込口座', ['bank_code', 'bank_name', 'branch_code', 'branch_name', 'account_type', 'account_number', 'account_holder']],
+];
+var SELECTS = { gender: ['', '男', '女', 'その他'], location: ['', '五反田', '赤坂', 'リモート'], employment_type: ['正社員', '契約社員', 'パート・アルバイト'], tax_column: ['甲', '乙'], account_type: ['普通', '当座'] };
+
+function empForm(cols, e) {
+  var colMap = {}; cols.forEach(function (c) { colMap[c[0]] = c; });
+  return EMP_GROUPS.map(function (g) {
+    return '<fieldset><legend>' + g[0] + '</legend><div class="form">' + g[1].filter(function (k) { return colMap[k]; }).map(function (k) {
+      var c = colMap[k], v = e[k] === null || e[k] === undefined ? '' : e[k];
+      if (c[2] === 'bool') return '<label class="chk"><input type="checkbox" id="f_' + k + '"' + (v ? ' checked' : '') + '> ' + esc(c[1]) + '</label>';
+      if (SELECTS[k]) return '<label>' + esc(c[1]) + '<select id="f_' + k + '">' + SELECTS[k].map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>';
+      var type = c[2] === 'date' ? 'date' : (c[2] === 'num' || c[2] === 'numOrNull') ? 'number' : 'text';
+      return '<label>' + esc(c[1]) + '<input type="' + type + '" id="f_' + k + '" value="' + esc(v) + '"' + (k === 'health_std' || k === 'pension_std' ? ' placeholder="空欄なら自動算出"' : '') + '></label>';
+    }).join('') + '</div></fieldset>';
+  }).join('');
+}
+function readEmpForm(cols) {
+  var f = {};
+  cols.forEach(function (c) { var el = $('f_' + c[0]); if (!el) return; f[c[0]] = el.type === 'checkbox' ? el.checked : el.value.trim(); });
+  return f;
+}
+
+var ADM = {
+  dashboard: function () {
+    return call('adm.dashboard').then(function (r) {
+      var a = r.alerts, t = r.today;
+      var overdue = a.tasks.filter(function (x) { return x.due_date < t; }).length;
+      view('<div class="row between"><h1>ダッシュボード</h1><button class="sub small" onclick="admRefresh()">最新の状態に更新</button></div>' +
+        '<div class="stats"><div class="stat"><b>' + a.empCount + '名</b><span>在籍者</span></div>' +
+        '<div class="stat"><b>' + r.punches.filter(function (p) { return p.in; }).length + ' / ' + r.punches.length + '</b><span>本日の出勤打刻</span></div>' +
+        '<div class="stat ' + (overdue ? 'danger' : '') + '"><b>' + overdue + '件</b><span>期限超過の手続き</span></div>' +
+        '<div class="stat ' + (a.tasks.length - overdue ? 'warn' : '') + '"><b>' + (a.tasks.length - overdue) + '件</b><span>2週間以内の手続き</span></div>' +
+        '<div class="stat ' + (a.ot.length ? 'danger' : '') + '"><b>' + a.ot.length + '件</b><span>36協定アラート</span></div>' +
+        '<div class="stat ' + (a.lv.length ? 'warn' : '') + '"><b>' + a.lv.length + '件</b><span>有給5日義務</span></div>' +
+        '<div class="stat"><b>' + a.drafts + '件</b><span>未確定の給与</span></div></div>' +
+        '<div class="panel"><div class="row between"><h2>期限が近い労務手続き</h2><a onclick="go(\'tasks\')">すべて見る →</a></div>' +
+        (a.tasks.length ? '<div class="wrap"><table><tr><th>期限</th><th>区分</th><th>手続き</th><th>対象者</th><th></th></tr>' + a.tasks.map(function (x) {
+          return '<tr class="' + (x.due_date < t ? 'bad' : '') + '"><td>' + x.due_date + (x.due_date < t ? ' <span class="badge danger">超過</span>' : '') + '</td><td><span class="badge">' + esc(x.category) + '</span></td><td>' + esc(x.title) + '<div class="small muted">' + esc(x.basis) + '</div></td><td>' + esc(x.name) + '</td><td><button class="small" onclick="taskDone(' + x._row + ')">完了</button></td></tr>';
+        }).join('') + '</table></div>' : '<p class="muted">2週間以内に期限が来る手続きはありません。</p>') + '</div>' +
+        '<div class="grid2"><div class="panel"><h2>36協定アラート（今月）</h2>' + (a.ot.length ? a.ot.map(function (x) { return '<p><span class="badge ' + x.level + '">' + (x.level === 'danger' ? '超過' : '注意') + '</span> ' + esc(x.text) + '</p>'; }).join('') : '<p class="muted">なし</p>') + '</div>' +
+        '<div class="panel"><h2>有給休暇 年5日取得義務</h2>' + (a.lv.length ? a.lv.map(function (x) { return '<p><span class="badge ' + x.level + '">' + (x.level === 'danger' ? '至急' : '注意') + '</span> ' + esc(x.text) + '</p>'; }).join('') : '<p class="muted">なし</p>') + '</div></div>' +
+        '<div class="grid2"><div class="panel"><h2>本日の打刻</h2><table><tr><th>氏名</th><th>出勤</th><th>退勤</th><th>場所</th></tr>' + r.punches.map(function (p) { return '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.in) + '</td><td>' + esc(p.out) + '</td><td>' + esc(p.place) + '</td></tr>'; }).join('') + '</table></div>' +
+        '<div class="panel"><h2>退勤の打刻漏れ（直近1ヶ月）</h2>' + (a.missing.length ? a.missing.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') : '<p class="muted">なし</p>') + '</div></div>');
+    });
+  },
+
+  employees: function () {
+    return call('adm.employees').then(function (list) {
+      view('<div class="row between"><h1>従業員</h1><button onclick="go(\'employeeEdit\', {})">＋ 従業員を登録</button></div><div class="wrap"><table><tr><th>社員番号</th><th>氏名</th><th>雇用形態</th><th>拠点</th><th>入社日</th><th class="n">基本給</th><th class="n">固定残業代</th><th>状態</th></tr>' +
+        list.map(function (e) { return '<tr><td>' + esc(e.code) + '</td><td><a onclick="go(\'employee\', {code:\'' + esc(e.code) + '\'})">' + esc(e.name) + '</a></td><td>' + esc(e.employment_type) + '</td><td>' + esc(e.location) + '</td><td>' + esc(e.hire_date) + '</td><td class="n">' + yen(e.base_salary) + '</td><td class="n">' + (e.fixed_ot_pay ? yen(e.fixed_ot_pay) + '（' + e.fixed_ot_hours + 'h）' : '-') + '</td><td>' + badgeStatus(e.status === '在籍' ? '確定' : e.status).replace('確定', '在籍') + '</td></tr>'; }).join('') +
+        '</table></div><p class="small muted">登録すると入社手続きのタスクが自動で作られます。基本給などを変えると月額変更届の判定に使う「賃金変更履歴」に自動で記録されます。</p>');
+    });
+  },
+  employee: function (p) {
+    return call('adm.employee', { code: p.code }).then(function (r) {
+      var e = r.emp, l = r.leave, ob = l.obligation;
+      view('<div class="row between"><h1>' + esc(e.name) + ' <span class="muted small">' + esc(e.code) + '</span></h1><div class="row"><button class="sub small" onclick="go(\'attendanceEmp\', {code:\'' + esc(e.code) + '\'})">勤怠を見る</button><button class="small" onclick="go(\'employeeEdit\', {code:\'' + esc(e.code) + '\'})">編集</button></div></div>' +
+        '<div class="grid2"><div class="panel"><h2>基本情報</h2><div class="kv"><div><span>雇用形態・拠点</span><span>' + esc(e.employment_type) + ' / ' + esc(e.location) + '</span></div><div><span>業務</span><span>' + esc(e.job) + '</span></div><div><span>入社日</span><span>' + esc(e.hire_date) + '</span></div><div><span>生年月日</span><span>' + esc(e.birth_date) + '</span></div><div><span>Googleアカウント</span><span>' + esc(e.email || '未登録') + '</span></div><div><span>退職日</span><span>' + esc(e.leave_date || '-') + ' ' + esc(e.leave_reason) + '</span></div></div></div>' +
+        '<div class="panel"><h2>給与・社会保険</h2><div class="kv"><div><span>基本給</span><span>' + yen(e.base_salary) + '円</span></div><div><span>役職手当／通勤手当</span><span>' + yen(e.position_allowance) + '円 / ' + yen(e.commute_allowance) + '円</span></div><div><span>固定残業代</span><span>' + yen(e.fixed_ot_pay) + '円（' + e.fixed_ot_hours + '時間）</span></div><div><span>標準報酬（健保／厚年）</span><span>' + yen(e.health_std) + ' / ' + yen(e.pension_std) + '</span></div><div><span>税区分・扶養</span><span>' + esc(e.tax_column) + '欄 / ' + e.dependents + '人</span></div><div><span>住民税</span><span>6月 ' + yen(e.resident_tax_june) + ' / 7月〜 ' + yen(e.resident_tax_monthly) + '</span></div><div><span>振込口座</span><span>' + esc(e.bank_name) + ' ' + esc(e.branch_name) + ' ' + esc(e.account_type) + ' ' + (e.account_number ? '****' + String(e.account_number).slice(-3) : '未登録') + '</span></div></div></div></div>' +
+        '<div class="panel"><h2>有給休暇</h2><div class="stats"><div class="stat"><b>' + l.balance + '日</b><span>残日数</span></div>' + (ob ? '<div class="stat ' + (ob.level === 'ok' ? '' : ob.level) + '"><b>' + ob.taken + ' / 5</b><span>年5日義務（' + ob.periodEnd + 'の前日まで）</span></div>' : '') + (l.nextGrant ? '<div class="stat"><b>' + l.nextGrant.days + '日</b><span>次回付与 ' + l.nextGrant.date + '</span></div>' : '') + '</div>' +
+        '<div class="row"><input type="date" id="lvDate"><select id="lvDays"><option value="1">1日</option><option value="0.5">半日</option></select><input id="lvNote" placeholder="備考"><button class="small" onclick="addLeave(\'' + esc(e.code) + '\')">取得を登録</button></div>' +
+        '<table style="margin-top:8px"><tr><th>取得日</th><th>日数</th><th>備考</th><th></th></tr>' + l.usages.slice().reverse().map(function (u) { return '<tr><td>' + u.date + '</td><td>' + u.days + '</td><td>' + esc(u.note) + '</td><td><button class="small sub" onclick="delLeave(' + u.row + ',\'' + esc(e.code) + '\')">削除</button></td></tr>'; }).join('') + '</table></div>' +
+        '<div class="panel"><h2>労務手続き</h2>' + (r.tasks.length ? '<table><tr><th>期限</th><th>手続き</th><th>状態</th></tr>' + r.tasks.map(function (x) { return '<tr><td>' + esc(x.due) + '</td><td>' + esc(x.title) + '</td><td>' + badgeStatus(x.status) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">なし</p>') + '</div>' +
+        '<div class="grid2"><div class="panel"><h2>給与履歴</h2><table><tr><th>支給月</th><th class="n">総支給</th><th class="n">差引支給</th><th>状態</th><th></th></tr>' + r.pays.map(function (x) { return '<tr><td>' + x.pay_ym + '</td><td class="n">' + yen(x.gross) + '</td><td class="n">' + yen(x.net) + '</td><td>' + badgeStatus(x.status) + '</td><td><button class="small sub" onclick="showSlip(\'' + x.id + '\', true)">明細</button></td></tr>'; }).join('') + '</table></div>' +
+        '<div class="panel"><h2>賃金変更履歴</h2>' + (r.changes.length ? r.changes.map(function (c) { return '<p>' + esc(c.effective_ym) + '支給分〜：' + esc(c.detail) + ' ' + (c.checked ? '<span class="badge ok">' + esc(c.result) + '</span>' : '<span class="badge warn">3ヶ月分の確定待ち</span>') + '</p>'; }).join('') : '<p class="muted">なし</p>') + '</div></div>' +
+        (e.leave_date ? '' : '<div class="panel"><h2>退職登録</h2><div class="row"><input type="date" id="rtDate"><select id="rtReason"><option>自己都合</option><option>会社都合</option><option>契約期間満了</option><option>定年</option><option>その他</option></select><button class="danger small" onclick="retire(\'' + esc(e.code) + '\')">退職を登録（退職手続きタスクを自動作成）</button></div></div>'));
+    });
+  },
+  employeeEdit: function (p) {
+    var isNew = !p.code;
+    return call(isNew ? 'adm.employeeForm' : 'adm.employee', { code: p.code }).then(function (r) {
+      var e = isNew ? { employment_type: '正社員', tax_column: '甲', social_insurance: true, employment_insurance: true, dependents: 0, account_type: '普通' } : r.emp;
+      S.cols = r.cols;
+      view('<h1>' + (isNew ? '従業員を登録' : esc(e.name) + ' を編集') + '</h1><div class="panel">' + empForm(r.cols, e) +
+        '<p class="small muted">標準報酬月額は資格取得届・算定基礎届などの決定通知書の金額を入力。住民税は「特別徴収税額決定通知書」の金額。口座名義・銀行名・支店名は振込データ用にカナで入力します。</p>' +
+        '<div class="row"><button onclick="saveEmp(' + (isNew ? 'null' : '\'' + esc(e.code) + '\'') + ')">' + (isNew ? '登録（入社手続きタスクを作成）' : '保存') + '</button><button class="sub" onclick="go(\'' + (isNew ? 'employees' : 'employee') + '\', {code:\'' + esc(e.code || '') + '\'})">キャンセル</button></div></div>');
+    });
+  },
+
+  attendance: function (p) {
+    var ym = p.ym || ymNow();
+    return call('adm.attendance', { ym: ym }).then(function (r) {
+      view('<div class="row between"><h1>勤怠</h1>' + monthNav(ym, 'admAtt') + '</div><div class="wrap"><table><tr><th>氏名</th><th class="n">出勤日数</th><th class="n">実働</th><th class="n">時間外</th><th class="n">60h超</th><th class="n">法定休日</th><th class="n">深夜</th><th>打刻漏れ</th><th>36協定</th></tr>' +
+        r.rows.map(function (x) { var bad = x.alerts.some(function (a) { return a.level === 'danger'; }); return '<tr class="' + (bad ? 'bad' : '') + '"><td><a onclick="go(\'attendanceEmp\', {code:\'' + esc(x.code) + '\', ym:\'' + ym + '\'})">' + esc(x.name) + '</a></td><td class="n">' + x.workDays + '</td><td class="n">' + x.worked + '</td><td class="n">' + x.overtime + '</td><td class="n">' + x.over60 + '</td><td class="n">' + x.holiday + '</td><td class="n">' + x.night + '</td><td>' + (x.incomplete ? '<span class="badge danger">' + x.incomplete + '件</span>' : '') + '</td><td class="small">' + x.alerts.map(function (a) { return '<span class="badge ' + a.level + '">' + (a.level === 'danger' ? '超過' : '注意') + '</span> ' + esc(a.msg); }).join('<br>') + '</td></tr>'; }).join('') +
+        '</table></div><p class="small muted">時間外＝1日8時間超＋週40時間超（法定休日を除く）。氏名を押すと日別の勤怠を確認・修正できます。</p>');
+    });
+  },
+  attendanceEmp: function (p) {
+    var ym = p.ym || ymNow();
+    return call('adm.attendanceEmp', { code: p.code, ym: ym }).then(function (r) {
+      S.attCode = r.code;
+      view('<div class="row between"><h1>' + esc(r.name) + ' の勤怠</h1>' + monthNav(ym, 'admAttEmp') + '</div>' +
+        r.alerts.map(function (a) { return '<div class="alert ' + (a.level === 'danger' ? 'err' : 'warn') + '">' + esc(a.msg) + '</div>'; }).join('') + sumStats(r.summary) + attTable(r, true) +
+        '<p class="small muted">出勤・退勤を両方空にして保存すると、その日の記録を削除します。修正内容は操作ログに残ります。</p>');
+    });
+  },
+
+  payroll: function (p) {
+    var ym = p.ym || S.payYm || ymAdd(ymNow(), -1);
+    S.payYm = ym;
+    return call('adm.payroll', { ym: ym }).then(function (r) {
+      var allConfirmed = r.rows.length && r.rows.every(function (x) { return x.pay && x.pay.status === '確定'; });
+      var tot = r.rows.reduce(function (t, x) { if (x.pay) { t.g += x.pay.gross; t.n += x.pay.net; } return t; }, { g: 0, n: 0 });
+      view('<div class="row between"><h1>給与計算 <span class="muted small">' + ym + '勤怠分（' + r.payYm + '月' + r.payDay + '日支給）</span></h1>' + monthNav(ym, 'admPay') + '</div>' +
+        '<div class="panel"><div class="row"><button onclick="payCalc()">① 入力を保存して計算</button><button class="sub" onclick="payConfirm()">② 確定</button><button class="sub" onclick="payDo(\'makeSlips\')">③ 明細PDFを作成</button><button class="sub" onclick="payDo(\'mailSlips\')">④ 明細をメール送信</button><button class="sub" onclick="payTransfer()">振込データ（全銀）</button><button class="sub" onclick="payJournal()">仕訳CSV</button></div>' +
+        '<p class="small muted">インセンティブ・欠勤日数などを入力して①を押すと、勤怠データから全員分を計算します。確定済みの人は再計算されません。振込データ・仕訳CSVは確定後に作成でき、Googleドライブに保存されます。</p></div>' +
+        '<div class="wrap"><table class="wide"><tr><th>氏名</th><th>インセンティブ</th><th>欠勤日数</th><th>その他手当（名称／金額）</th><th>その他控除（名称／金額）</th><th>源泉税（手入力）</th><th>年末調整</th><th class="n">総支給額</th><th class="n">控除合計</th><th class="n">差引支給額</th><th>状態</th><th></th></tr>' +
+        r.rows.map(function (x) {
+          var i = x.input, pay = x.pay, lock = pay && pay.status === '確定' ? ' disabled' : '', c = x.code;
+          return '<tr><td>' + esc(x.name) + (pay && pay.notes ? '<div class="note">⚠ ' + esc(pay.notes) + '</div>' : '') + '</td>' +
+            '<td><input type="number" id="pi_inc_' + c + '" value="' + (i.incentive || '') + '"' + lock + '></td><td><input type="number" step="0.5" class="s" id="pi_abs_' + c + '" value="' + (i.absenceDays || '') + '"' + lock + '></td>' +
+            '<td><div class="stack"><input placeholder="名称" id="pi_oal_' + c + '" value="' + esc(i.otherAllowanceLabel || '') + '"' + lock + '><input type="number" placeholder="金額" id="pi_oa_' + c + '" value="' + (i.otherAllowance || '') + '"' + lock + '></div></td>' +
+            '<td><div class="stack"><input placeholder="名称" id="pi_odl_' + c + '" value="' + esc(i.otherDeductionLabel || '') + '"' + lock + '><input type="number" placeholder="金額" id="pi_od_' + c + '" value="' + (i.otherDeduction || '') + '"' + lock + '></div></td>' +
+            '<td><input type="number" id="pi_wh_' + c + '" value="' + esc(i.withholdingOverride || '') + '" placeholder="自動"' + lock + '></td><td><input type="number" id="pi_ye_' + c + '" value="' + (i.yearEndAdjustment || '') + '"' + lock + '></td>' +
+            '<td class="n">' + (pay ? yen(pay.gross) : '-') + '</td><td class="n">' + (pay ? yen(pay.deduction_total) : '-') + '</td><td class="n"><b>' + (pay ? yen(pay.net) : '-') + '</b></td><td>' + badgeStatus(pay ? pay.status : '未計算') + '</td>' +
+            '<td><div class="acts">' + (pay ? '<button class="small sub" onclick="showSlip(\'' + pay.id + '\', true)">明細</button>' + (pay.status === '確定' ? '<button class="small sub" onclick="payUnconfirm(\'' + pay.id + '\')">取消</button>' : '') + (pay.pdf ? '<a href="' + esc(pay.pdf) + '" target="_blank">PDF</a>' : '') : '') + '</div></td></tr>';
+        }).join('') + '<tr><th>合計</th><th colspan="6"></th><th class="n">' + yen(tot.g) + '</th><th></th><th class="n">' + yen(tot.n) + '</th><th colspan="2">' + (allConfirmed ? badgeStatus('確定') : '') + '</th></tr></table></div>');
+      S.payRows = r.rows.map(function (x) { return x.code; });
+    });
+  },
+
+  bonus: function (p) {
+    if (!p.payDate) {
+      return call('adm.bonusList').then(function (list) {
+        view('<h1>賞与</h1><div class="panel"><div class="row"><label>支給日 <input type="date" id="bnDate"></label><button onclick="if(val(\'bnDate\'))go(\'bonus\',{payDate:val(\'bnDate\')})">この日の賞与を作成・開く</button></div></div>' +
+          '<div class="panel"><h2>これまでの賞与</h2>' + (list.length ? '<table><tr><th>支給日</th><th class="n">人数</th><th class="n">賞与総額</th><th>状態</th></tr>' + list.map(function (b) { return '<tr><td><a onclick="go(\'bonus\',{payDate:\'' + b.date + '\'})">' + b.date + '</a></td><td class="n">' + b.count + '</td><td class="n">' + yen(b.total) + '</td><td>' + badgeStatus(b.confirmed ? '確定' : '下書き') + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">まだありません</p>') + '</div>');
+      });
+    }
+    return call('adm.bonus', { payDate: p.payDate }).then(function (r) {
+      S.bonusDate = r.payDate;
+      S.bonusRows = r.rows.map(function (x) { return x.code; });
+      view('<div class="row between"><h1>賞与 <span class="muted small">' + r.payDate + ' 支給</span></h1><a onclick="go(\'bonus\')">← 賞与の一覧</a></div>' +
+        '<div class="panel"><div class="row"><button onclick="bonusSave()">① 保存して計算</button><button class="sub" onclick="bonusConfirm()">② 確定（賞与支払届タスクを作成）</button><button class="sub" onclick="bonusDo(\'bonusSlips\')">③ 明細PDFを作成</button><button class="sub" onclick="bonusTransfer()">振込データ（全銀）</button><button class="sub" onclick="bonusJournal()">仕訳CSV</button></div>' +
+        '<p class="small muted">源泉所得税の算出率は、国税庁「賞与に対する源泉徴収税額の算出率の表」で「前月の社会保険料控除後の給与」と「扶養人数」から求めて入力してください（例：6.126）。賞与額を空にして保存すると、その人の行を削除します。</p></div>' +
+        '<div class="wrap"><table class="wide"><tr><th>氏名</th><th class="n">前月の社保控除後給与</th><th class="n">扶養</th><th>賞与額</th><th>算出率（%）</th><th class="n">社会保険料等</th><th class="n">源泉所得税</th><th class="n">差引支給額</th><th>状態</th><th></th></tr>' +
+        r.rows.map(function (x) {
+          var b = x.bonus, lock = b && b.status === '確定' ? ' disabled' : '';
+          return '<tr><td>' + esc(x.name) + (b && b.notes ? '<div class="note">⚠ ' + esc(b.notes) + '</div>' : '') + '</td><td class="n">' + yen(x.prevSalary) + '<div class="small muted">' + esc(x.prevNote) + '</div></td><td class="n">' + x.dependents + '人（' + esc(x.taxColumn) + '）</td>' +
+            '<td><input type="number" id="bn_amt_' + x.code + '" value="' + (b ? b.amount : '') + '"' + lock + '></td><td><input class="s" id="bn_rate_' + x.code + '" value="' + esc(b ? b.rate : '') + '"' + lock + '></td>' +
+            '<td class="n">' + (b ? yen(b.health + b.child + b.pension + b.employment) : '-') + '</td><td class="n">' + (b ? yen(b.withholding) : '-') + '</td><td class="n"><b>' + (b ? yen(b.net) : '-') + '</b></td><td>' + badgeStatus(b ? b.status : '未計算') + '</td>' +
+            '<td>' + (b ? '<button class="small sub" onclick="showSlip(\'' + b.id + '\', true)">明細</button>' + (b.pdf ? ' <a href="' + esc(b.pdf) + '" target="_blank">PDF</a>' : '') : '') + '</td></tr>';
+        }).join('') + '</table></div>');
+    });
+  },
+
+  yearend: function (p) {
+    var year = p.year || S.yeYear || String(todayJst().getFullYear());
+    S.yeYear = year;
+    return call('adm.yearEnd', { year: year }).then(function (r) { renderYearEnd(r); });
+  },
+
+  tasks: function (p) {
+    var st = p.status || '未完了';
+    return call('adm.tasks', { status: st }).then(function (list) {
+      var t = todayJst(); var ts = t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+      view('<div class="row between"><h1>労務タスク</h1><div class="tabs" style="width:260px;margin:0"><a class="' + (st === '未完了' ? 'on' : '') + '" onclick="go(\'tasks\',{status:\'未完了\'})">未完了</a><a class="' + (st === '完了' ? 'on' : '') + '" onclick="go(\'tasks\',{status:\'完了\'})">完了</a></div></div>' +
+        '<p class="small muted">入社・退職の登録、賞与の確定、給与確定時の月額変更届の判定、年次スケジュールから自動で作られます。書類の作成・提出は自社の担当者または顧問社労士が行ってください。</p>' +
+        '<div class="wrap"><table><tr><th>期限</th><th>区分</th><th>手続き</th><th>対象者</th><th>状態・メモ</th></tr>' + list.map(function (x) {
+          var od = st !== '完了' && x.due && x.due < ts;
+          return '<tr class="' + (od ? 'bad' : '') + '"><td>' + esc(x.due) + (od ? ' <span class="badge danger">超過</span>' : '') + '</td><td><span class="badge">' + esc(x.category) + '</span></td><td>' + esc(x.title) + '<div class="small muted">' + esc(x.basis) + '</div></td><td>' + esc(x.name) + '</td>' +
+            '<td><div class="row"><select id="ts_' + x.row + '">' + ['未対応', '対応中', '完了'].map(function (o) { return '<option' + (o === x.status ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select><input id="tn_' + x.row + '" value="' + esc(x.note) + '" placeholder="メモ（提出日など）" class="w"><button class="small" onclick="taskSave(' + x.row + ')">保存</button></div>' + (x.completed_at ? '<div class="small muted">完了 ' + esc(x.completed_at) + '</div>' : '') + '</td></tr>';
+        }).join('') + '</table></div>' +
+        '<div class="panel" style="margin-top:16px"><h2>タスクを追加</h2><div class="row"><input id="ntTitle" placeholder="内容" style="flex:1;min-width:220px"><input type="date" id="ntDue"><input id="ntName" placeholder="対象者（空欄なら全社）"><button class="small" onclick="taskAdd()">追加</button></div></div>');
+    });
+  },
+
+  settings: function () {
+    return call('adm.settings').then(function (list) {
+      var groups = [['会社・労働時間', function (k) { return /company_name|pay_|legal|scheduled|daily|weekly|agreement36/.test(k); }], ['社会保険料率（毎年度要確認）', function (k) { return /_rate|child_support/.test(k); }],
+        ['通知・ログイン', function (k) { return /notify|slack|punch_require|admin_emails/.test(k); }], ['振込データ（会社の口座）', function (k) { return /zengin|company_/.test(k); }], ['仕訳CSVの勘定科目', function (k) { return /^acct_/.test(k); }]];
+      S.settingKeys = list.map(function (x) { return x.key; });
+      view('<h1>設定</h1><div class="alert warn">【要確認】の料率は毎年度改定されます。協会けんぽ（都道府県支部）・厚生労働省の公式資料で確認してから給与計算を行ってください。</div><div class="panel">' +
+        groups.map(function (g) { return '<fieldset><legend>' + g[0] + '</legend><div class="form">' + list.filter(function (x) { return g[1](x.key); }).map(function (x) { return '<label>' + esc(x.label) + '<input id="st_' + x.key + '" value="' + esc(x.value) + '">' + (x.hint ? '<span>' + esc(x.hint) + '</span>' : '') + '</label>'; }).join('') + '</div></fieldset>'; }).join('') +
+        '<button onclick="saveSettings()">保存</button></div>');
+    });
+  },
+  logs: function () {
+    return call('adm.logs').then(function (list) {
+      view('<h1>操作ログ</h1><p class="small muted">勤怠修正・給与確定・設定変更・ログインなどの記録（直近300件）。</p><div class="wrap"><table><tr><th>日時</th><th>操作者</th><th>操作</th><th>内容</th></tr>' +
+        list.map(function (l) { return '<tr><td class="small">' + esc(l.at) + '</td><td>' + esc(l.actor) + '</td><td>' + esc(l.action) + '</td><td class="small">' + esc(l.detail) + '</td></tr>'; }).join('') + '</table></div>');
+    });
+  },
+};
+
+// ---------- 管理画面の操作 ----------
+function admRefresh() { call('adm.refresh').then(function (r) { go('dashboard', {}, '更新しました（新しいタスク ' + r.created + '件' + (r.changes.length ? '、賃金変更を検知：' + r.changes.join('、') : '') + '）'); }).catch(fail); }
+function taskDone(row) { call('adm.updateTask', { row: row, status: '完了' }).then(function () { go(S.view); }).catch(fail); }
+function taskSave(row) { call('adm.updateTask', { row: row, status: $('ts_' + row).value, note: val('tn_' + row) }).then(function () { go('tasks', S.params); }).catch(fail); }
+function taskAdd() { call('adm.addTask', { title: val('ntTitle'), due: val('ntDue'), name: val('ntName') }).then(function () { go('tasks'); }).catch(fail); }
+function saveEmp(orig) {
+  var f = readEmpForm(S.cols);
+  call('adm.saveEmployee', { originalCode: orig, fields: f }).then(function (r) {
+    go('employee', { code: r.code }, '保存しました' + (r.created ? '（労務タスク ' + r.created + '件を作成）' : '') + (r.changes.length ? '\n固定的賃金の変更を記録しました：' + r.changes.join('、') + '\n（賃金変更履歴の「変更後の初回支給月」が違う場合はスプレッドシートで修正してください）' : ''));
+  }).catch(fail);
+}
+function retire(code) { if (!val('rtDate')) return flash('退職日を入力してください', 'err'); if (!confirm('退職を登録し、退職手続きのタスクを作成します。よろしいですか？')) return; call('adm.retire', { code: code, leave_date: val('rtDate'), leave_reason: val('rtReason') }).then(function (r) { go('employee', { code: code }); }).catch(fail); }
+function addLeave(code) { call('adm.addLeave', { code: code, date: val('lvDate'), days: val('lvDays'), note: val('lvNote') }).then(function () { go('employee', { code: code }); }).catch(fail); }
+function delLeave(row, code) { if (!confirm('削除しますか？')) return; call('adm.deleteLeave', { row: row }).then(function () { go('employee', { code: code }); }).catch(fail); }
+function admAtt(ym) { go('attendance', { ym: ym }); }
+function admAttEmp(ym) { go('attendanceEmp', { code: S.attCode, ym: ym }); }
+function saveAtt(date) {
+  call('adm.saveAttendance', { code: S.attCode, date: date, clock_in: val('i_' + date), clock_out: val('o_' + date), break_minutes: val('b_' + date), note: val('m_' + date) })
+    .then(function () { go('attendanceEmp', { code: S.attCode, ym: date.slice(0, 7) }, date + ' を保存しました'); }).catch(fail);
+}
+function admPay(ym) { go('payroll', { ym: ym }); }
+function payInputs() {
+  return S.payRows.map(function (c) { return { code: c, incentive: val('pi_inc_' + c), absenceDays: val('pi_abs_' + c), otherAllowanceLabel: val('pi_oal_' + c), otherAllowance: val('pi_oa_' + c), otherDeductionLabel: val('pi_odl_' + c), otherDeduction: val('pi_od_' + c), withholdingOverride: val('pi_wh_' + c), yearEndAdjustment: val('pi_ye_' + c) }; });
+}
+function payCalc() { call('adm.savePayInputs', { ym: S.payYm, rows: payInputs() }).then(function (msg) { go('payroll', { ym: S.payYm }, msg); }).catch(fail); }
+function payConfirm() { if (!confirm(S.payYm + '勤怠分の下書きの給与をすべて確定します。よろしいですか？')) return; call('adm.confirmPayroll', { ym: S.payYm }).then(function (msg) { go('payroll', { ym: S.payYm }, msg); }).catch(fail); }
+function payUnconfirm(id) { var reason = prompt('確定を取り消す理由を入力してください（操作ログに残ります）'); if (!reason) return; call('adm.unconfirmPayroll', { id: id, reason: reason }).then(function () { go('payroll', { ym: S.payYm }); }).catch(fail); }
+function payDo(action) { if (action === 'mailSlips' && !confirm('明細メール配信に同意した従業員に、明細PDFをメールで送信します。よろしいですか？')) return; call('adm.' + action, { ym: S.payYm }).then(function (msg) { go('payroll', { ym: S.payYm }, msg); }).catch(fail); }
+function fileResult(r) {
+  if (r.ok === false) return flash('作成できませんでした。次の項目を確認してください：\n' + r.errors.join('\n'), 'err');
+  flash(r.name + ' を作成しました' + (r.count ? '（' + r.count + '件・合計 ' + yen(r.total) + '円）' : '') + '\nGoogleドライブ：' + r.url);
+  $('flash').innerHTML += '<br><a href="' + esc(r.url) + '" target="_blank">ファイルを開く</a>';
+}
+function payTransfer() { var d = prompt('振込指定日（YYYY-MM-DD）。空欄なら設定の給与支給日', ''); if (d === null) return; call('adm.transfer', { kind: 'payroll', key: S.payYm, payDate: d }).then(fileResult).catch(fail); }
+function payJournal() { call('adm.journal', { kind: 'payroll', key: S.payYm }).then(fileResult).catch(fail); }
+function bonusInputs() { return S.bonusRows.map(function (c) { return { code: c, amount: val('bn_amt_' + c), rate: val('bn_rate_' + c) }; }); }
+function bonusSave() { call('adm.saveBonus', { payDate: S.bonusDate, rows: bonusInputs() }).then(function (msg) { go('bonus', { payDate: S.bonusDate }, msg); }).catch(fail); }
+function bonusConfirm() { if (!confirm(S.bonusDate + ' 支給の賞与を確定します。よろしいですか？')) return; call('adm.confirmBonus', { payDate: S.bonusDate }).then(function (msg) { go('bonus', { payDate: S.bonusDate }, msg); }).catch(fail); }
+function bonusDo(action) { call('adm.' + action, { payDate: S.bonusDate }).then(function (msg) { go('bonus', { payDate: S.bonusDate }, msg); }).catch(fail); }
+function bonusTransfer() { call('adm.transfer', { kind: 'bonus', key: S.bonusDate, payDate: S.bonusDate }).then(fileResult).catch(fail); }
+function bonusJournal() { call('adm.journal', { kind: 'bonus', key: S.bonusDate }).then(fileResult).catch(fail); }
+function saveSettings() { var v = {}; S.settingKeys.forEach(function (k) { v[k] = val('st_' + k); }); call('adm.saveSettings', { values: v }).then(function (n) { go('settings', {}, n + '件の設定を保存しました'); }).catch(fail); }
+
+// ---------- 年末調整 ----------
+var YE_FIELDS = [['socialDeclared', '申告による社会保険料'], ['lifeInsurance', '生命保険料控除'], ['earthquake', '地震保険料控除'], ['spouseSpecial', '配偶者特別控除'],
+  ['depGeneral', '一般扶養（人）'], ['depSpecific', '特定扶養 19〜22歳（人）'], ['depElderly', '老人扶養 70歳〜（人）'], ['depElderlyTogether', '同居老親等（人）'], ['otherDeduction', 'その他の所得控除（障害者・特定親族特別控除など）'], ['housingLoan', '住宅借入金等特別控除']];
+function renderYearEnd(r) {
+  S.yeRows = r.rows.map(function (x) { return x.code; });
+  view('<div class="row between"><h1>年末調整 <span class="muted small">' + r.year + '年分</span></h1><div class="row"><button class="sub small" onclick="go(\'yearend\',{year:\'' + (r.year - 1) + '\'})">← 前年</button><button class="sub small" onclick="go(\'yearend\',{year:\'' + (Number(r.year) + 1) + '\'})">翌年 →</button></div></div>' +
+    '<div class="alert warn">' + esc(r.note) + '</div>' +
+    '<div class="panel"><div class="row"><button onclick="yeCalc()">① 入力を保存して計算</button><button class="sub" onclick="yeReflect()">② 過不足を12月支給の給与に反映</button></div></div>' +
+    r.rows.map(function (x) {
+      var sv = x.saved || {}, a = x.auto;
+      var v = function (k) { return sv[k] !== undefined && sv[k] !== '' ? sv[k] : ''; };
+      return '<div class="panel"><div class="row between"><h2>' + esc(x.name) + '</h2>' + (x.saved ? badgeStatus('計算済み') + (sv.reflected ? ' <span class="badge ok">12月給与に反映済み</span>' : '') : badgeStatus('未計算')) + '</div>' +
+        '<div class="kv" style="max-width:520px"><div><span>給与等の支払金額（自動）</span><span>' + yen(a.salaryIncome) + '円</span></div><div><span>源泉徴収済み税額（自動）</span><span>' + yen(a.withheld) + '円</span></div><div><span>給与等から控除した社会保険料（自動）</span><span>' + yen(a.socialWithheld) + '円</span></div><div><span>集計対象</span><span class="small">' + esc(a.months.join('・')) + '月支給' + (a.bonusCount ? '＋賞与' + a.bonusCount + '回' : '') + '</span></div></div>' +
+        '<div class="form" style="margin-top:10px"><label>配偶者控除<select id="ye_spouseType_' + x.code + '">' + ['なし', '一般', '老人'].map(function (o) { return '<option' + (o === (sv.spouseType || 'なし') ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>' +
+        YE_FIELDS.map(function (f) { return '<label>' + f[1] + '<input type="number" id="ye_' + f[0] + '_' + x.code + '" value="' + v(f[0]) + '"></label>'; }).join('') + '</div>' +
+        (x.saved ? '<div class="stats" style="margin-top:12px"><div class="stat"><b>' + yen(sv.salaryIncomeAfter) + '</b><span>給与所得控除後</span></div><div class="stat"><b>' + yen(sv.deductionTotal) + '</b><span>所得控除の合計</span></div><div class="stat"><b>' + yen(sv.taxableIncome) + '</b><span>課税所得</span></div><div class="stat"><b>' + yen(sv.annualTax) + '</b><span>年調年税額</span></div><div class="stat ' + (sv.diff > 0 ? 'warn' : '') + '"><b>' + (sv.diff > 0 ? '徴収 ' : sv.diff < 0 ? '還付 ' : '') + yen(Math.abs(sv.diff)) + '円</b><span>過不足</span></div></div>' : '') + '</div>';
+    }).join(''));
+}
+function yeCalc() {
+  var rows = S.yeRows.map(function (c) { var r = { code: c, spouseType: val('ye_spouseType_' + c) }; YE_FIELDS.forEach(function (f) { r[f[0]] = val('ye_' + f[0] + '_' + c); }); return r; });
+  call('adm.saveYearEnd', { year: S.yeYear, rows: rows }).then(function () { go('yearend', { year: S.yeYear }, '計算しました'); }).catch(fail);
+}
+function yeReflect() { if (!confirm(S.yeYear + '年12月支給の給与に、年末調整の過不足を反映して再計算します。よろしいですか？')) return; call('adm.reflectYearEnd', { year: S.yeYear }).then(function (msg) { flash(msg); }).catch(fail); }
+
+start();
+</script>
+</body>
+</html>

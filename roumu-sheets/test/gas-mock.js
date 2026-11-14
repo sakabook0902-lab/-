@@ -66,6 +66,7 @@ class Sheet {
   getDataRange() { return new Range(this, 1, 1, Math.max(this.getLastRow(), 1), Math.max(this.getLastColumn(), 1)); }
   appendRow(arr) { const r = this.getLastRow() + 1; arr.forEach((v, i) => this.set(r, i + 1, strip(v))); return this; }
   clear() { this.data = []; return this; }
+  deleteRow(r) { this.data.splice(r - 1, 1); return this; }
   protect() { const p = { setDescription: () => p, setWarningOnly: () => p }; return p; }
   getProtections() { return []; }
   hideSheet() { this.hidden = true; return this; }
@@ -129,7 +130,13 @@ function load({ now, email = '' } = {}) {
   const ctx = {
     console,
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => ui, ProtectionType: { SHEET: 'SHEET' }, newDataValidation: () => dv },
-    Utilities: { formatDate, newBlob: (content, type, name) => { const b = { content, type, name, getAs: () => b, setName: (n) => { b.name = n; return b; }, getName: () => b.name }; return b; } },
+    Utilities: {
+      formatDate,
+      newBlob: (content, type, name) => { const b = { content, type, name, getAs: () => b, setName: (n) => { b.name = n; return b; }, getName: () => b.name, setDataFromString: (t, cs) => { b.content = t; b.charset = cs; return b; } }; return b; },
+      computeDigest: (alg, text) => Array.from(require('crypto').createHash('sha256').update(text, 'utf8').digest()).map((x) => (x > 127 ? x - 256 : x)),
+      DigestAlgorithm: { SHA_256: 'SHA_256' }, Charset: { UTF_8: 'UTF_8' },
+      getUuid: () => require('crypto').randomUUID(),
+    },
     Session: { getActiveUser: () => ({ getEmail: () => ctx.__email }), getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
     CacheService: { getScriptCache: () => ({ get: (k) => (cache.has(k) ? cache.get(k) : null), put: (k, v) => cache.set(k, v), remove: (k) => cache.delete(k) }) },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },

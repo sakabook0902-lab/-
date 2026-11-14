@@ -6,7 +6,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const libDir = path.join(root, '..', 'roumu', 'src', 'lib');
-const LIBS = ['dates', 'standardRemuneration', 'withholding', 'attendance', 'leave', 'payroll', 'procedures'];
+const LIBS = ['dates', 'standardRemuneration', 'withholding', 'attendance', 'leave', 'payroll', 'procedures', 'bonus', 'yearEnd', 'zengin'];
 
 let out = `// ============================================================
 // 勤怠・給与計算・労務手続き管理（Googleスプレッドシート版）
@@ -40,7 +40,7 @@ for (const f of fs.readdirSync(path.join(root, 'src')).filter((x) => x.endsWith(
   out += `var HTML_${path.basename(f, '.html').toUpperCase()} = ${JSON.stringify(html)};\n`;
 }
 
-out += '\n' + fs.readFileSync(path.join(root, 'src', 'Code.js'), 'utf8');
+for (const f of ['Code.js', 'WebApp.js']) out += '\n' + fs.readFileSync(path.join(root, 'src', f), 'utf8');
 
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'Code.gs'), out);

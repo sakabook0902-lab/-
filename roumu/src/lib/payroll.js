@@ -69,6 +69,16 @@ function calculate({ emp, s, att, input = {}, ym, payYm }) {
     lines.notes.push(`時間外 ${(ot60 + otOver).toFixed(1)}時間 が固定残業時間（${emp.fixed_ot_hours}時間）を超えています`);
   }
 
+  // 月の途中で入社・退職した場合（日割の要否は就業規則・賃金規程による）
+  const mStart = `${ym}-01`;
+  const mEnd = `${ym}-${String(daysInMonth(ym)).padStart(2, '0')}`;
+  if (emp.hire_date && emp.hire_date > mStart && emp.hire_date <= mEnd) {
+    lines.notes.push(`月の途中で入社しています（${emp.hire_date}）。賃金規程に日割の定めがある場合は「欠勤日数」または「その他控除」で調整してください`);
+  }
+  if (emp.leave_date && emp.leave_date >= mStart && emp.leave_date < mEnd) {
+    lines.notes.push(`月の途中で退職しています（${emp.leave_date}）。賃金規程に日割の定めがある場合は「欠勤日数」または「その他控除」で調整してください`);
+  }
+
   const scheduledDays = n(s.monthly_scheduled_days) || 20;
   const absenceDeduction = Math.floor(((base + position) / scheduledDays) * absenceDays);
 
