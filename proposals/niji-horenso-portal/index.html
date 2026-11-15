@@ -1,0 +1,357 @@
+<title>ニジ看護転職 報連相ポータル</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky top bar + tab nav; each view is a single column of panels, 2-col on wide screens */
+:root{
+  --bg:#f5f8f8; --surface:#ffffff; --line:#dbe5e5; --fg:#1d2a2c; --muted:#5f7275;
+  --accent:#0f8b8d; --accent-soft:#e1f2f2; --coral:#e8735a; --coral-soft:#fdeee9;
+  --ok:#2f8f4e; --ok-soft:#e5f4ea; --warn:#b7791f; --warn-soft:#fbf1dc; --bad:#c2413a; --bad-soft:#fbe7e5;
+  --f-display:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111a1b; --surface:#182325; --line:#2a3a3c; --fg:#e4eeee; --muted:#93a8aa;
+  --accent:#3bb8b9; --accent-soft:#16393a; --coral:#f08d77; --coral-soft:#3a2420;
+  --ok:#5cc27c; --ok-soft:#173023; --warn:#e0a849; --warn-soft:#352a14; --bad:#ef7a72; --bad-soft:#3a1b19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111a1b; --surface:#182325; --line:#2a3a3c; --fg:#e4eeee; --muted:#93a8aa;
+  --accent:#3bb8b9; --accent-soft:#16393a; --coral:#f08d77; --coral-soft:#3a2420;
+  --ok:#5cc27c; --ok-soft:#173023; --warn:#e0a849; --warn-soft:#352a14; --bad:#ef7a72; --bad-soft:#3a1b19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.7}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:12px;padding-block:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:17px}
+.arc{width:30px;height:16px;flex:none}
+.who{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:12px}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav a{padding:8px 12px 10px;color:var(--muted);text-decoration:none;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent}
+nav a[aria-current="page"]{color:var(--accent);border-color:var(--accent)}
+nav a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sample{background:var(--warn-soft);color:var(--warn);font-size:12px;padding:6px 0;text-align:center}
+main{padding-block:24px 64px}
+h1{font-family:var(--f-display);font-size:22px;margin:0 0 4px;text-wrap:balance}
+h2{font-family:var(--f-display);font-size:16px;margin:0 0 12px}
+.lead{color:var(--muted);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-family:var(--f-mono);font-size:24px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:13px;color:var(--muted)}
+.meter{height:5px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{padding:10px 0;border-top:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.list li:first-child{border-top:0;padding-top:0}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.03em}
+.p-report{background:var(--accent-soft);color:var(--accent)}
+.p-contact{background:var(--ok-soft);color:var(--ok)}
+.p-consult{background:var(--coral-soft);color:var(--coral)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.meta{font-size:12px;color:var(--muted)}
+.grow{flex:1;min-width:0}
+.btn{font:inherit;font-weight:700;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;background:var(--accent);color:var(--surface)}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.sm{padding:4px 10px;font-size:12px}
+form{display:grid;gap:12px}
+label{font-size:12px;font-weight:700;color:var(--muted);display:grid;gap:4px}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg input{position:absolute;opacity:0;width:1px}
+.seg label{cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:13px;color:var(--fg);display:block}
+.seg input:checked+label{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:8px;font-weight:700;z-index:20}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(190px,1fr);gap:12px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-width:0}
+.col h3{font-size:13px;margin:0 0 10px;display:flex;justify-content:space-between}
+.col h3 span{font-family:var(--f-mono);color:var(--muted)}
+.card{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:13px;background:var(--bg)}
+.card.hot{border-left-color:var(--coral)}
+.card b{display:block}
+.tablebox{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:700}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:700}
+.thread{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.reply{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <div class="logo">
+        <svg class="arc" viewBox="0 0 30 16" aria-hidden="true"><path d="M2 15a13 13 0 0 1 26 0" fill="none" stroke="#e8735a" stroke-width="2.4"/><path d="M6 15a9 9 0 0 1 18 0" fill="none" stroke="#e0a849" stroke-width="2.4"/><path d="M10 15a5 5 0 0 1 10 0" fill="none" stroke="#0f8b8d" stroke-width="2.4"/></svg>
+        報連相ポータル
+      </div>
+      <div class="who"><span>ニジ看護転職</span><span class="avatar">CA</span><span>佐藤 美咲（CA）</span></div>
+    </div>
+    <nav id="nav" aria-label="メニュー">
+      <a href="#home">ホーム</a>
+      <a href="#post">報連相を送る</a>
+      <a href="#feed">報連相一覧</a>
+      <a href="#daily">日報</a>
+      <a href="#pipeline">求職者進捗</a>
+      <a href="#follow">入職後フォロー</a>
+      <a href="#knowledge">ナレッジ</a>
+    </nav>
+  </div>
+</header>
+<div class="sample"><div class="wrap">提案用デモです。表示している人名・医療機関・数値はすべてサンプルです。</div></div>
+
+<main class="wrap">
+
+<!-- HOME -->
+<section data-view="home">
+  <h1>おはようございます、佐藤さん</h1>
+  <p class="lead">2026年11月16日（月）　今月の目標と、今日対応が必要なことです。</p>
+  <div class="kpis">
+    <div class="kpi"><div class="l">新規面談</div><div class="v">18<small> / 30</small></div><div class="meter"><i style="width:60%"></i></div></div>
+    <div class="kpi"><div class="l">応募（書類推薦）</div><div class="v">24<small> / 40</small></div><div class="meter"><i style="width:60%"></i></div></div>
+    <div class="kpi"><div class="l">面接設定</div><div class="v">11<small> / 20</small></div><div class="meter"><i style="width:55%"></i></div></div>
+    <div class="kpi"><div class="l">内定承諾</div><div class="v">4<small> / 6</small></div><div class="meter"><i style="width:67%"></i></div></div>
+    <div class="kpi"><div class="l">売上見込（紹介料）</div><div class="v">312<small>万円</small></div><div class="meter"><i style="width:69%"></i></div></div>
+  </div>
+  <div class="grid">
+    <div class="panel">
+      <h2>今日のアクション</h2>
+      <ul class="list">
+        <li><span class="pill p-bad">期限今日</span><div class="grow">高田さん（急性期5年目）の面接日程を〇〇総合病院へ回答<div class="meta">15:00まで</div></div></li>
+        <li><span class="pill p-warn">入職30日</span><div class="grow">伊藤さん（訪問看護）入職1か月フォロー面談<div class="meta">早期離職防止チェックシートを記入</div></div></li>
+        <li><span class="pill p-report">内定</span><div class="grow">森さんの条件交渉結果を上長に報告<div class="meta">年収提示：480万円 → 承諾見込</div></div></li>
+        <li><span class="pill p-consult">相談待ち</span><div class="grow">夜勤NG希望者への提案先について 田中リーダーから回答あり</div></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>お知らせ</h2>
+      <ul class="list">
+        <li><span class="pill p-bad">重要</span><div class="grow">個人情報の取扱い：求職者の履歴書は社外チャットへ添付しないでください<div class="meta">管理部　11/14</div></div></li>
+        <li><span class="pill p-contact">求人</span><div class="grow">さくら訪問看護ステーション（品川区）オンコール手当が増額になりました<div class="meta">RA担当　11/13</div></div></li>
+        <li><span class="pill p-report">社内</span><div class="grow">12月の全体MTGは12/5（金）17:00〜 オンライン<div class="meta">総務　11/12</div></div></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>最近の報連相</h2>
+      <ul class="list" id="homeFeed"></ul>
+      <p style="margin:12px 0 0"><a href="#feed" style="color:var(--accent);font-weight:700">すべて見る</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- POST -->
+<section data-view="post" hidden>
+  <h1>報連相を送る</h1>
+  <p class="lead">「報告」は結果、「連絡」は共有、「相談」は判断がほしいとき。迷ったら相談でOKです。</p>
+  <div class="grid">
+    <div class="panel">
+      <form id="postForm">
+        <div>
+          <div class="seg" role="radiogroup" aria-label="種別">
+            <input type="radio" name="kind" id="k1" value="報告" checked><label for="k1">報告</label>
+            <input type="radio" name="kind" id="k2" value="連絡"><label for="k2">連絡</label>
+            <input type="radio" name="kind" id="k3" value="相談"><label for="k3">相談</label>
+          </div>
+        </div>
+        <div class="row">
+          <label for="cat">カテゴリ
+            <select id="cat">
+              <option>求職者対応</option><option>医療機関・施設対応</option><option>内定・条件交渉</option>
+              <option>入職後フォロー</option><option>クレーム・トラブル</option><option>社内・その他</option>
+            </select>
+          </label>
+          <label for="urg">緊急度
+            <select id="urg"><option>通常</option><option>本日中</option><option>至急</option></select>
+          </label>
+        </div>
+        <label for="target">対象（求職者ID・医療機関名など）
+          <input id="target" placeholder="例：C-1042 高田さん ／ 〇〇総合病院">
+        </label>
+        <label for="title">件名
+          <input id="title" required placeholder="例：〇〇総合病院 一次面接の結果">
+        </label>
+        <label for="body">内容
+          <textarea id="body" required placeholder="結論 → 経緯 → 次のアクション の順で書くと伝わりやすいです"></textarea>
+        </label>
+        <label for="to">宛先
+          <select id="to"><option>チーム全体</option><option>田中リーダー</option><option>RA（法人担当）</option><option>管理部</option></select>
+        </label>
+        <div><button class="btn" type="submit">送信する</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>書き方のテンプレート</h2>
+      <details open><summary>面接結果の報告</summary><p>【結論】合格／不合格／保留<br>【先方コメント】<br>【求職者の温度感】<br>【次のアクション】期日・担当</p><button class="btn ghost sm" type="button" data-tpl="【結論】\n【先方コメント】\n【求職者の温度感】\n【次のアクション】">本文に入れる</button></details>
+      <details><summary>辞退・音信不通の連絡</summary><p>【対象】【最終接触日】【理由（推測含む）】【医療機関への連絡状況】</p><button class="btn ghost sm" type="button" data-tpl="【対象】\n【最終接触日】\n【理由】\n【医療機関への連絡状況】">本文に入れる</button></details>
+      <details><summary>条件交渉の相談</summary><p>【現在の提示条件】【求職者の希望】【ギャップ】【提案したい落とし所】</p><button class="btn ghost sm" type="button" data-tpl="【現在の提示条件】\n【求職者の希望】\n【ギャップ】\n【提案したい落とし所】">本文に入れる</button></details>
+      <details><summary>トラブル・クレームの報告</summary><p>【発生日時】【当事者】【事実】【こちらの対応】【今後のリスク】※至急で上長へ</p><button class="btn ghost sm" type="button" data-tpl="【発生日時】\n【当事者】\n【事実】\n【こちらの対応】\n【今後のリスク】">本文に入れる</button></details>
+    </div>
+  </div>
+</section>
+
+<!-- FEED -->
+<section data-view="feed" hidden>
+  <h1>報連相一覧</h1>
+  <p class="lead">チーム内の報告・連絡・相談。相談には返信がつきます。</p>
+  <div class="filters seg" role="radiogroup" aria-label="絞り込み">
+    <input type="radio" name="f" id="f0" value="" checked><label for="f0">すべて</label>
+    <input type="radio" name="f" id="f1" value="報告"><label for="f1">報告</label>
+    <input type="radio" name="f" id="f2" value="連絡"><label for="f2">連絡</label>
+    <input type="radio" name="f" id="f3" value="相談"><label for="f3">相談</label>
+  </div>
+  <div class="panel"><ul class="list" id="feedList"></ul></div>
+</section>
+
+<!-- DAILY -->
+<section data-view="daily" hidden>
+  <h1>日報</h1>
+  <p class="lead">数字は1日の終わりに入力。週次・月次の集計はリーダー画面に自動で反映される想定です。</p>
+  <div class="grid">
+    <div class="panel">
+      <form id="dailyForm">
+        <label for="dDate">日付<input type="date" id="dDate" value="2026-11-16"></label>
+        <div class="row">
+          <label for="d1">架電数<input type="number" id="d1" min="0" value="22"></label>
+          <label for="d2">新規面談<input type="number" id="d2" min="0" value="3"></label>
+          <label for="d3">書類推薦<input type="number" id="d3" min="0" value="4"></label>
+          <label for="d4">面接設定<input type="number" id="d4" min="0" value="2"></label>
+          <label for="d5">内定<input type="number" id="d5" min="0" value="1"></label>
+          <label for="d6">入職決定<input type="number" id="d6" min="0" value="0"></label>
+        </div>
+        <label for="dGood">うまくいったこと<textarea id="dGood">夜勤なし希望の方に、日勤常勤のクリニック2件を提案して面接につながった。</textarea></label>
+        <label for="dIssue">課題・明日やること<textarea id="dIssue">急性期志望の2年目の方、病院側の経験年数要件と合わず。明日RAに要件緩和の可否を確認する。</textarea></label>
+        <div><button class="btn" type="submit">日報を提出</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>今週の推移</h2>
+      <div class="tablebox"><table>
+        <thead><tr><th>日付</th><th>架電</th><th>面談</th><th>推薦</th><th>面接</th><th>内定</th><th>入職</th></tr></thead>
+        <tbody id="dailyBody"></tbody>
+      </table></div>
+      <h2 style="margin-top:20px">歩留まり（今月）</h2>
+      <ul class="list">
+        <li><div class="grow">面談 → 推薦</div><span class="pill p-report">133%</span></li>
+        <li><div class="grow">推薦 → 面接</div><span class="pill p-report">46%</span></li>
+        <li><div class="grow">面接 → 内定承諾</div><span class="pill p-warn">36%</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section data-view="pipeline" hidden>
+  <h1>求職者進捗</h1>
+  <p class="lead">担当求職者のステータス。オレンジの線は今週中に動きが必要な方です。</p>
+  <div class="board" id="board"></div>
+</section>
+
+<!-- FOLLOW -->
+<section data-view="follow" hidden>
+  <h1>入職後フォロー</h1>
+  <p class="lead">早期退職は返金規定の対象になるため、入職後7日・30日・90日で必ず連絡します。</p>
+  <div class="panel tablebox">
+    <table>
+      <thead><tr><th>求職者</th><th>入職先</th><th>入職日</th><th>7日</th><th>30日</th><th>90日</th><th>状態</th><th>返金規定期間</th></tr></thead>
+      <tbody>
+        <tr><td>伊藤 さん</td><td>さくら訪問看護ステーション</td><td class="num">2026-10-16</td><td><span class="pill p-contact">済</span></td><td><span class="pill p-warn">今日</span></td><td>—</td><td>オンコールの負担を気にしている</td><td class="num">〜2027-01-15</td></tr>
+        <tr><td>中村 さん</td><td>〇〇総合病院 循環器病棟</td><td class="num">2026-09-01</td><td><span class="pill p-contact">済</span></td><td><span class="pill p-contact">済</span></td><td><span class="pill p-report">11/30</span></td><td>順調</td><td class="num">〜2026-11-30</td></tr>
+        <tr><td>小林 さん</td><td>△△クリニック（美容）</td><td class="num">2026-11-04</td><td><span class="pill p-bad">未</span></td><td>—</td><td>—</td><td>7日連絡が2日遅れ</td><td class="num">〜2027-02-03</td></tr>
+        <tr><td>山本 さん</td><td>ケアホーム□□（施設）</td><td class="num">2026-08-01</td><td><span class="pill p-contact">済</span></td><td><span class="pill p-contact">済</span></td><td><span class="pill p-contact">済</span></td><td>フォロー完了</td><td class="num">終了</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- KNOWLEDGE -->
+<section data-view="knowledge" hidden>
+  <h1>ナレッジ</h1>
+  <p class="lead">よく受ける質問と、社内ルールのまとめ。</p>
+  <div class="grid">
+    <div class="panel">
+      <h2>求職者からよく聞かれること</h2>
+      <details><summary>ブランクが3年あっても応募できますか？</summary><p>可能です。復職支援研修がある病院・訪問看護を優先して提案。採血など手技の不安は面談で必ず確認する。</p></details>
+      <details><summary>夜勤なしで年収を維持したい</summary><p>日勤常勤の訪問看護（オンコール手当込み）、健診センター、美容クリニックが候補。年収の下がり幅を事前に試算して伝える。</p></details>
+      <details><summary>在職中で面接の時間が取れない</summary><p>平日夕方・オンライン面接に対応する医療機関リストを参照。RAに日程調整を依頼する。</p></details>
+    </div>
+    <div class="panel">
+      <h2>社内ルール</h2>
+      <details><summary>個人情報の取扱い</summary><p>履歴書・職務経歴書は社内システム内でのみ共有。医療機関へ送る前に本人の同意を記録する。</p></details>
+      <details><summary>職業安定法に関する注意</summary><p>求人内容の誇張や、求職者の意思に反する転職の勧奨は禁止。紹介手数料の説明は求人企業向け資料に沿って行う。</p></details>
+      <details><summary>エスカレーションの基準</summary><p>クレーム・トラブル・返金規定に関わる件は「至急」で上長に相談。迷ったら報連相ポータルで相談を送る。</p></details>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const seed=[
+ {id:1,kind:"報告",cat:"内定・条件交渉",urg:"通常",target:"C-1031 森さん",title:"〇〇総合病院 内定・条件提示",body:"年収480万円・循環器病棟で内定。本人は前向き、明日中に回答予定です。",to:"田中リーダー",by:"佐藤",at:"11/15 18:20",replies:["了解です。承諾後に入職日の調整をお願いします。— 田中"]},
+ {id:2,kind:"相談",cat:"求職者対応",urg:"本日中",target:"C-1048 高橋さん",title:"夜勤NG・年収400万以上の提案先",body:"2児の母、日勤のみ希望。年収を下げたくないとのこと。訪問看護以外で候補はありますか？",to:"チーム全体",by:"佐藤",at:"11/15 11:05",replies:["健診センター（品川）が日勤で420万〜あります。— 鈴木","オンコールなしの訪問看護も2件出ています。— 田中"]},
+ {id:3,kind:"連絡",cat:"医療機関・施設対応",urg:"通常",target:"さくら訪問看護ステーション",title:"オンコール手当増額",body:"1回3,000円→4,000円に変更。求人票を更新済みです。",to:"チーム全体",by:"山田（RA）",at:"11/13 16:40",replies:[]},
+ {id:4,kind:"報告",cat:"クレーム・トラブル",urg:"至急",target:"△△クリニック",title:"面接当日の求職者欠席",body:"小川さんが面接に来られず、先方からお叱りあり。本人とは連絡がついていません。お詫びの連絡は済ませています。",to:"田中リーダー",by:"佐藤",at:"11/12 14:10",replies:["今日中に本人へ再連絡を。先方には私からも連絡します。— 田中"]}
+];
+let posts;
+try{posts=JSON.parse(localStorage.getItem("niji-posts"))||seed}catch(e){posts=seed}
+const save=()=>{try{localStorage.setItem("niji-posts",JSON.stringify(posts))}catch(e){}};
+const pillCls={"報告":"p-report","連絡":"p-contact","相談":"p-consult"};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function item(p,full){
+  const urg=p.urg==="至急"?'<span class="pill p-bad">至急</span> ':p.urg==="本日中"?'<span class="pill p-warn">本日中</span> ':"";
+  let h=`<li><span class="pill ${pillCls[p.kind]}">${p.kind}</span><div class="grow"><div>${urg}<b>${esc(p.title)}</b></div><div class="meta">${esc(p.cat)}　${esc(p.target||"")}　${esc(p.by)} → ${esc(p.to)}　${p.at}</div>`;
+  if(full){
+    h+=`<p style="margin:6px 0">${esc(p.body).replace(/\n/g,"<br>")}</p><div class="thread">${p.replies.map(r=>`<div class="reply">${esc(r)}</div>`).join("")}</div>
+    <form class="replyForm" data-id="${p.id}" style="grid-template-columns:1fr auto;margin-top:8px"><input id="r${p.id}" placeholder="返信する" aria-label="返信"><button class="btn sm" type="submit">返信</button></form>`;
+  } else if(p.replies.length){h+=`<div class="meta">返信 ${p.replies.length}件</div>`}
+  return h+"</div></li>";
+}
+function renderFeed(){
+  const f=document.querySelector('input[name="f"]:checked').value;
+  document.getElementById("feedList").innerHTML=posts.filter(p=>!f||p.kind===f).map(p=>item(p,true)).join("")||"<li>該当する投稿はありません</li>";
+  document.getElementById("homeFeed").innerHTML=posts.slice(0,3).map(p=>item(p,false)).join("");
+}
+document.querySelectorAll('input[name="f"]').forEach(r=>r.addEventListener("change",renderFeed));
+document.getElementById("feedList").addEventListener("submit",e=>{
+  e.preventDefault();const id=+e.target.dataset.id;const inp=e.target.querySelector("input");
+  if(!inp.value.trim())return;posts.find(p=>p.id===id).replies.push(inp.value.trim()+" — 佐藤");save();renderFeed();toast("返信しました");
+});
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,2200)}
+document.getElementById("postForm").addEventListener("submit",e=>{
+  e.preventDefault();const g=id=>document.getElementById(id).value;
+  const d=new Date();const at=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  posts.unshift({id:Date.now(),kind:document.querySelector('input[name="kind"]:checked').value,cat:g("cat"),urg:g("urg"),target:g("target"),title:g("title"),body:g("body"),to:g("to"),by:"佐藤",at,replies:[]});
+  save();renderFeed();e.target.reset();toast("送信しました");location.hash="feed";
+});
+document.querySelectorAll("[data-tpl]").forEach(b=>b.addEventListener("click",()=>{document.getElementById("body").value=b.dataset.tpl.replace(/\\n/g,"\n");document.getElementById("body").focus()}));
+const week=[["11/10",25,4,5,2,1,0],["11/11",18,2,3,1,0,1],["11/12",30,5,6,3,1,0],["11/13",21,3,4,2,0,0],["11/14",27,4,5,2,1,1]];
+function renderDaily(){document.getElementById("dailyBody").innerHTML=week.map(r=>`<tr>${r.map((c,i)=>`<td class="${i?"num":""}">${c}</td>`).join("")}</tr>`).join("")}
+document.getElementById("dailyForm").addEventListener("submit",e=>{
+  e.preventDefault();const v=["d1","d2","d3","d4","d5","d6"].map(i=>+document.getElementById(i).value||0);
+  const dt=document.getElementById("dDate").value.split("-");week.push([`${+dt[1]}/${+dt[2]}`,...v]);if(week.length>6)week.shift();renderDaily();toast("日報を提出しました");
+});
+const stages={"新規登録":[["C-1052 木村さん","病棟3年／転居予定",1],["C-1053 斎藤さん","ブランク2年",0]],"面談済":[["C-1048 高橋さん","日勤のみ希望",1],["C-1050 松本さん","訪問看護志望",0]],"書類推薦":[["C-1044 吉田さん","ICU経験／3件推薦",0],["C-1046 林さん","美容クリニック",0]],"面接":[["C-1042 高田さん","〇〇総合病院 11/19",1]],"内定":[["C-1031 森さん","年収480万 回答待ち",1]],"入職決定":[["C-1025 中村さん","12/1入職",0]]};
+document.getElementById("board").innerHTML=Object.entries(stages).map(([k,v])=>`<div class="col"><h3>${k}<span>${v.length}</span></h3>${v.map(c=>`<div class="card${c[2]?" hot":""}"><b>${c[0]}</b><span class="meta">${c[1]}</span></div>`).join("")}</div>`).join("");
+const views=[...document.querySelectorAll("[data-view]")].map(s=>s.dataset.view);
+function route(){const v=views.includes(location.hash.slice(1))?location.hash.slice(1):"home";
+  document.querySelectorAll("[data-view]").forEach(s=>s.hidden=s.dataset.view!==v);
+  document.querySelectorAll("#nav a").forEach(a=>a.getAttribute("href")==="#"+v?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));window.scrollTo(0,0)}
+addEventListener("hashchange",route);renderFeed();renderDaily();route();
+</script>
