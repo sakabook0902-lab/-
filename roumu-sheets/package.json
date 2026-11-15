@@ -1,0 +1,12 @@
+{
+  "name": "roumu-sheets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "勤怠・給与計算・労務手続き管理（Googleスプレッドシート / Apps Script版）",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test test/*.test.js",
+    "push": "node scripts/build.js && clasp push"
+  },
+  "engines": { "node": ">=20" }
+}

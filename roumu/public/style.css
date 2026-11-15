@@ -1,0 +1,201 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #dfe3e8;
+  --text: #1f2933;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --danger: #dc2626;
+  --ok: #16a34a;
+  --warn: #d97706;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; }
+
+.topbar nav a {
+  margin-left: 18px;
+  text-decoration: none;
+  color: var(--accent);
+  font-size: 0.92rem;
+}
+
+.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+h1 { font-size: 1.4rem; margin-bottom: 8px; }
+h2 { font-size: 1.1rem; margin-top: 0; }
+
+.hint { color: var(--muted); font-size: 0.9rem; }
+
+.alert {
+  background: #fef2f2;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.panel-danger { border-color: var(--danger); background: #fff5f5; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-card.warn { border-color: var(--warn); }
+.stat-card.danger { border-color: var(--danger); }
+
+.stat-num { display: block; font-size: 1.6rem; font-weight: 700; }
+.stat-label { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+.tbl { width: 100%; border-collapse: collapse; background: var(--panel); }
+.tbl th, .tbl td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  text-align: left;
+}
+.tbl th { background: #f0f2f5; }
+
+.kv { border-collapse: collapse; }
+.kv th, .kv td { padding: 6px 12px; text-align: left; font-size: 0.9rem; }
+.kv th { color: var(--muted); width: 160px; }
+
+.form { display: flex; flex-direction: column; gap: 12px; max-width: 480px; }
+.form label { display: flex; flex-direction: column; font-size: 0.88rem; gap: 4px; }
+.form input, .form select, .form textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+button {
+  align-self: flex-start;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+button:hover { opacity: 0.9; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  background: #e5e7eb;
+  color: var(--text);
+}
+.badge.ok { background: #dcfce7; color: var(--ok); }
+.badge.danger { background: #fee2e2; color: var(--danger); }
+.badge.warn { background: #fef3c7; color: var(--warn); }
+
+.danger-text { color: var(--danger); font-weight: 700; }
+
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 24px 0;
+}
+
+/* ---- 勤怠・給与システム 追加分 ---- */
+.topbar { flex-wrap: wrap; gap: 8px; }
+.topbar nav { display: flex; flex-wrap: wrap; gap: 4px 0; }
+.topbar nav a.active { font-weight: 700; text-decoration: underline; }
+.container { max-width: 1180px; }
+.devbanner { background: #fef3c7; color: #92400e; border-bottom: 1px solid var(--warn); padding: 8px 24px; font-size: 0.85rem; }
+.flash { background: #ecfdf5; border: 1px solid var(--ok); color: #065f46; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.between { justify-content: space-between; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
+.form-grid label, .inline label { display: flex; flex-direction: column; font-size: 0.85rem; gap: 4px; }
+.form-grid input, .form-grid select, .inline input, .inline select, .inline textarea {
+  padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.92rem; font-family: inherit;
+}
+.form-grid label.check { flex-direction: row; align-items: center; gap: 6px; }
+fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
+legend { font-weight: 700; font-size: 0.95rem; padding: 0 6px; }
+.inline { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+button.sub { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+button.small, .btn-small { padding: 5px 10px; font-size: 0.8rem; }
+button.danger { background: var(--danger); }
+a.btn { display: inline-block; background: var(--accent); color: #fff; padding: 9px 16px; border-radius: 6px; text-decoration: none; font-size: 0.9rem; }
+a.btn.sub { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.tbl tr.sun td:first-child, .tbl tr.sun td:nth-child(2) { color: var(--danger); }
+.tbl tr.sat td:first-child, .tbl tr.sat td:nth-child(2) { color: var(--accent); }
+.tbl tr.overdue td { background: #fff5f5; }
+.tbl td input { width: 70px; padding: 4px; border: 1px solid var(--border); border-radius: 4px; }
+.tbl td input.wide { width: 140px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+.verify { color: var(--warn); font-weight: 700; }
+.table-wrap { overflow-x: auto; }
+
+/* 打刻画面 */
+.punch { max-width: 460px; margin: 30px auto; text-align: center; }
+.clock { font-size: 3rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 8px 0 20px; }
+.punch input, .punch select { width: 100%; padding: 12px; font-size: 1.1rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; }
+.punch-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.punch-buttons button { width: 100%; padding: 18px; font-size: 1.1rem; align-self: stretch; }
+.punch-buttons .in { background: var(--ok); }
+.punch-buttons .out { background: var(--danger); }
+.punch-buttons .brk { background: #64748b; }
+
+/* 給与明細（印刷用） */
+.slip { background: #fff; max-width: 820px; margin: 0 auto; padding: 28px; border: 1px solid var(--border); }
+.slip h1 { text-align: center; }
+.slip .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media print {
+  .topbar, .footer, .devbanner, .noprint { display: none !important; }
+  body { background: #fff; }
+  .slip { border: none; }
+}
+@media (max-width: 640px) {
+  .container { padding: 16px; }
+  .slip .cols { grid-template-columns: 1fr; }
+}
+.warnbox { background: #fffbeb; border: 1px solid var(--warn); color: #92400e; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }

@@ -1,0 +1,65 @@
+<%- include('partials/layout_top') %>
+<% const r = p.result, i = p.input, a = r.attendance || {}; const draft = p.status === '下書き'; %>
+<div class="row between">
+  <h1><a href="/employees/<%= p.emp.id %>"><%= p.emp.name %></a> 給与 <%= p.ym %>勤怠分 <span class="muted small">（<%= p.pay_ym %>支給）</span></h1>
+  <div class="row"><a class="btn sub" href="/payroll?ym=<%= p.ym %>">一覧へ</a><a class="btn sub" href="/payroll/<%= p.id %>/slip">給与明細</a></div>
+</div>
+<% if (msg) { %><div class="flash"><%= msg %></div><% } %>
+<% r.lines.notes.forEach(n => { %><div class="alert"><%= n %></div><% }) %>
+
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-num"><%= yen(r.gross) %></span><span class="stat-label">総支給額</span></div>
+  <div class="stat-card"><span class="stat-num"><%= yen(r.deductionTotal) %></span><span class="stat-label">控除合計</span></div>
+  <div class="stat-card"><span class="stat-num"><%= yen(r.net) %></span><span class="stat-label">差引支給額</span></div>
+  <div class="stat-card"><span class="stat-num"><span class="badge <%= draft ? 'warn' : 'ok' %>"><%= p.status %></span></span><span class="stat-label"><%= p.confirmed_at || '未確定' %></span></div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>支給</h2>
+    <table class="tbl">
+      <% r.lines.earnings.forEach(l => { %><tr><td><%= l.label %><% if (l.hint) { %><div class="small muted"><%= l.hint %></div><% } %></td><td class="num"><%= yen(l.amount) %></td></tr><% }) %>
+      <tr><th>総支給額</th><th class="num"><%= yen(r.gross) %></th></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h2>控除</h2>
+    <table class="tbl">
+      <% r.lines.deductions.forEach(l => { %><tr><td><%= l.label %><% if (l.hint) { %><div class="small muted"><%= l.hint %></div><% } %></td><td class="num"><%= yen(l.amount) %></td></tr><% }) %>
+      <tr><th>控除合計</th><th class="num"><%= yen(r.deductionTotal) %></th></tr>
+    </table>
+    <p class="small muted">課税対象額 <%= yen(r.taxable) %>円 / 割増賃金の時間単価 <%= r.hourly %>円 / 支払基礎日数 <%= r.baseDays %>日</p>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>勤怠（<%= p.ym %>）</h2>
+  <p>出勤 <%= a.workDays %>日 / 実働 <%= fmtHours(a.worked || 0) %> / 時間外 <%= fmtHours(a.overtime || 0) %>（60h超 <%= fmtHours(a.overtimeOver60 || 0) %>）/ 法定休日 <%= fmtHours(a.holiday || 0) %> / 深夜 <%= fmtHours(a.night || 0) %>
+  <a href="/attendance/<%= p.emp.id %>?ym=<%= p.ym %>">勤怠を確認・修正 →</a></p>
+  <p class="hint small">勤怠を修正した場合は「再計算」を押してください。</p>
+</div>
+
+<div class="panel">
+  <h2>今月の入力</h2>
+  <form method="post" action="/payroll/<%= p.id %>/inputs">
+    <div class="form-grid">
+      <label>インセンティブ（成約報酬など）<input type="number" name="incentive" value="<%= i.incentive || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>欠勤日数<input type="number" step="0.5" name="absenceDays" value="<%= i.absenceDays || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>その他手当（名称）<input name="otherAllowanceLabel" value="<%= i.otherAllowanceLabel || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>その他手当（金額・課税）<input type="number" name="otherAllowance" value="<%= i.otherAllowance || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>その他控除（名称）<input name="otherDeductionLabel" value="<%= i.otherDeductionLabel || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>その他控除（金額）<input type="number" name="otherDeduction" value="<%= i.otherDeduction || '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label>源泉所得税（手入力する場合）<input type="number" name="withholdingOverride" value="<%= i.withholdingOverride ?? '' %>" placeholder="空欄なら自動計算" <%= draft ? '' : 'disabled' %>></label>
+      <label>メモ<input name="note" value="<%= i.note || '' %>" <%= draft ? '' : 'disabled' %>></label>
+    </div>
+    <% if (draft) { %><p><button>再計算</button></p><% } %>
+  </form>
+  <% if (draft) { %>
+    <form method="post" action="/payroll/<%= p.id %>/confirm" onsubmit="return confirm('この内容で確定しますか？')"><button class="sub">確定する</button></form>
+  <% } else { %>
+    <form method="post" action="/payroll/<%= p.id %>/unconfirm" class="inline" onsubmit="return confirm('確定を取り消しますか？（操作ログに記録されます）')">
+      <label>取消理由<input name="reason" required></label><button class="small danger">確定を取り消す</button>
+    </form>
+  <% } %>
+</div>
+<%- include('partials/layout_bottom') %>

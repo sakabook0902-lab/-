@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' | ' : '' %>勤怠・給与・労務</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <% if (devMode) { %><div class="devbanner">⚠ 開発モード：ADMIN_PASSWORD が未設定のため、管理画面に認証がかかっていません。本番運用前に必ず設定してください。</div><% } %>
+  <header class="topbar">
+    <a href="/" class="brand">勤怠・給与・労務</a>
+    <nav>
+      <% const nav = [['/', 'ダッシュボード'], ['/punch', '打刻'], ['/employees', '従業員'], ['/attendance', '勤怠'], ['/payroll', '給与計算'], ['/tasks', '労務タスク'], ['/santei', '算定基礎'], ['/settings', '設定'], ['/audit', '操作ログ']]; %>
+      <% nav.forEach(([href, label]) => { const on = href === '/' ? path === '/' : path.startsWith(href); %>
+        <a href="<%= href %>" class="<%= on ? 'active' : '' %>"><%= label %></a>
+      <% }) %>
+    </nav>
+  </header>
+  <main class="container">

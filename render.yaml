@@ -1,0 +1,32 @@
+# Render（https://render.com）の Blueprint 設定ファイル
+# 「New → Blueprint」でこのリポジトリを選ぶと、勤怠・給与・労務システム（roumu/）が自動で構築されます。
+# 手順の詳細は roumu/DEPLOY.md を参照。
+services:
+  - type: web
+    name: roumu
+    runtime: node
+    rootDir: roumu
+    plan: starter            # データ保存用ディスクを使うため有料プラン（無料プランはディスク不可・再起動でデータが消える）
+    region: singapore        # 日本から最も近いリージョン
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: roumu-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: Asia/Tokyo
+      - key: DB_PATH
+        value: /var/data/roumu.db
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false          # 作成時に画面で入力（リポジトリには保存しない）
+      - key: SEED_DEMO
+        value: "false"       # デモ用に架空データを入れたい場合だけ "true"（DBが空のときのみ投入）

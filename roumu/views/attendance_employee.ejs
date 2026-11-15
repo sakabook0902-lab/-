@@ -1,0 +1,36 @@
+<%- include('partials/layout_top') %>
+<div class="row between">
+  <h1><a href="/employees/<%= emp.id %>"><%= emp.name %></a> 勤怠 <%= ym %></h1>
+  <div class="row"><a class="btn sub" href="/attendance/<%= emp.id %>?ym=<%= prev %>">← 前月</a><a class="btn sub" href="/attendance/<%= emp.id %>?ym=<%= next %>">翌月 →</a><a class="btn sub" href="/attendance?ym=<%= ym %>">一覧へ</a></div>
+</div>
+<% alerts.forEach(a => { %><div class="<%= a.level === 'danger' ? 'alert' : 'warnbox' %>"><%= a.msg %></div><% }) %>
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-num"><%= summary.workDays %></span><span class="stat-label">出勤日数</span></div>
+  <div class="stat-card"><span class="stat-num"><%= fmtHours(summary.worked) %></span><span class="stat-label">実働</span></div>
+  <div class="stat-card"><span class="stat-num"><%= fmtHours(summary.overtime) %></span><span class="stat-label">時間外（週40h超 <%= fmtHours(summary.weeklyOvertime) %>）</span></div>
+  <div class="stat-card"><span class="stat-num"><%= fmtHours(summary.holiday) %></span><span class="stat-label">法定休日</span></div>
+  <div class="stat-card"><span class="stat-num"><%= fmtHours(summary.night) %></span><span class="stat-label">深夜</span></div>
+</div>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>日付</th><th>曜</th><th>出勤</th><th>退勤</th><th>休憩(分)</th><th>備考</th><th class="num">実働</th><th class="num">時間外</th><th class="num">深夜</th><th>場所</th><th></th></tr>
+  <% dates.forEach(d => { const r = d.rec || {}; %>
+  <tr id="d<%= d.date %>" class="<%= d.wd === 0 ? 'sun' : d.wd === 6 ? 'sat' : '' %>">
+    <% const f = 'f' + d.date; %>
+    <td><%= d.date.slice(5) %></td>
+    <td><%= WEEKDAYS[d.wd] %><%= d.wd === Number(s.legal_holiday_weekday) ? '（法休）' : '' %></td>
+    <td><input form="<%= f %>" name="clock_in" value="<%= r.clock_in || '' %>" placeholder="09:00"></td>
+    <td><input form="<%= f %>" name="clock_out" value="<%= r.clock_out || '' %>" placeholder="18:00"></td>
+    <td><input form="<%= f %>" name="break_minutes" type="number" value="<%= r.break_minutes ?? '' %>" placeholder="60"></td>
+    <td><input form="<%= f %>" name="note" class="wide" value="<%= r.note || '' %>"><% if (d.leave) { %> <span class="badge ok">有給<%= d.leave.days < 1 ? '(半)' : '' %></span><% } %></td>
+    <td class="num"><% if (r.complete) { %><%= fmtHours(r.worked) %><% } else if (r.clock_in) { %><span class="badge danger">未退勤</span><% } %></td>
+    <td class="num"><%= r.totalOvertime ? fmtHours(r.totalOvertime) : (r.holiday ? '休' + fmtHours(r.holiday) : '') %></td>
+    <td class="num"><%= r.night ? fmtHours(r.night) : '' %></td>
+    <td class="small"><%= r.work_place || '' %><%= r.edited ? ' ✎' : '' %></td>
+    <td><form id="<%= f %>" method="post" action="/attendance/<%= emp.id %>/save"><input type="hidden" name="work_date" value="<%= d.date %>"><button class="small sub">保存</button></form></td>
+  </tr>
+  <% }) %>
+</table>
+</div>
+<p class="hint small">✎ は管理者が修正した日です。修正内容は操作ログに記録されます。出勤・退勤を両方空欄にして保存すると、その日の記録を削除します。</p>
+<%- include('partials/layout_bottom') %>

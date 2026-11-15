@@ -1,0 +1,32 @@
+<%- include('partials/layout_top') %>
+<div class="row between">
+  <h1>給与計算 <%= ym %>勤怠分 <span class="muted small">（<%= payYm %>支給）</span></h1>
+  <div class="row"><a class="btn sub" href="/payroll?ym=<%= prev %>">← 前月</a><a class="btn sub" href="/payroll?ym=<%= next %>">翌月 →</a></div>
+</div>
+<% if (msg) { %><div class="flash"><%= msg %></div><% } %>
+<div class="panel">
+  <div class="row">
+    <form method="post" action="/payroll/run"><input type="hidden" name="ym" value="<%= ym %>"><button>① 勤怠データから一括計算</button></form>
+    <form method="post" action="/payroll/confirm-all" onsubmit="return confirm('下書きの給与をすべて確定します。よろしいですか？')"><input type="hidden" name="ym" value="<%= ym %>"><button class="sub">③ 一括確定</button></form>
+    <a class="btn sub" href="/export/wage-ledger.csv?year=<%= payYm.slice(0,4) %>">賃金台帳CSV（<%= payYm.slice(0,4) %>年支給分）</a>
+  </div>
+  <p class="hint small">手順：① 一括計算 → ② 各従業員の画面でインセンティブ・欠勤日数などを入力して再計算 → ③ 確定。確定すると固定的賃金を変更した人の月額変更届の要否を自動判定します。</p>
+</div>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>社員番号</th><th>氏名</th><th class="num">総支給額</th><th class="num">控除合計</th><th class="num">差引支給額</th><th>状態</th><th></th></tr>
+  <% rows.forEach(r => { const res = r.pay ? JSON.parse(r.pay.result_json) : null; %>
+  <tr>
+    <td><%= r.emp.code %></td>
+    <td><%= r.emp.name %></td>
+    <td class="num"><%= r.pay ? yen(r.pay.gross) : '-' %></td>
+    <td class="num"><%= res ? yen(res.deductionTotal) : '-' %></td>
+    <td class="num"><%= r.pay ? yen(r.pay.net) : '-' %></td>
+    <td><% if (!r.pay) { %><span class="badge">未計算</span><% } else { %><span class="badge <%= r.pay.status === '確定' ? 'ok' : 'warn' %>"><%= r.pay.status %></span><% if (res && res.lines.notes.length) { %> <span class="badge danger" title="<%= res.lines.notes.join(' / ') %>">要確認 <%= res.lines.notes.length %></span><% } %><% } %></td>
+    <td><% if (r.pay) { %><a href="/payroll/<%= r.pay.id %>">詳細・入力</a> | <a href="/payroll/<%= r.pay.id %>/slip">明細</a><% } %></td>
+  </tr>
+  <% }) %>
+  <tr><th colspan="2">合計</th><th class="num"><%= yen(totals.gross) %></th><th></th><th class="num"><%= yen(totals.net) %></th><th colspan="2"></th></tr>
+</table>
+</div>
+<%- include('partials/layout_bottom') %>

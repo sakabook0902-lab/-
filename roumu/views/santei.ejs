@@ -1,0 +1,21 @@
+<%- include('partials/layout_top') %>
+<div class="row between"><h1>算定基礎（定時決定）シミュレーション <%= year %>年</h1>
+<form class="inline" method="get"><label>年<input type="number" name="year" value="<%= year %>"></label><button class="small sub">表示</button></form></div>
+<p class="hint">4・5・6月に支給した確定済み給与（支払基礎日数17日以上の月）の報酬平均から、9月以降の標準報酬月額を試算します。算定基礎届の作成・提出前の確認用です。</p>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>氏名</th><th class="num">対象月数</th><th class="num">報酬月額（平均）</th><th class="num">現在の健保標準報酬</th><th class="num">新しい健保標準報酬</th><th class="num">新しい厚年標準報酬</th><th>等級の変動</th></tr>
+  <% rows.forEach(x => { %>
+  <tr>
+    <td><a href="/employees/<%= x.emp.id %>"><%= x.emp.name %></a></td>
+    <td class="num"><%= x.r.valid %> / 3</td>
+    <td class="num"><%= x.r.avg ? yen(x.r.avg) : '-' %></td>
+    <td class="num"><%= yen(x.emp.health_std) %>（<%= x.curGrade %>等級）</td>
+    <td class="num"><%= x.r.avg ? yen(x.r.standard) + '（' + x.r.grade + '等級）' : '-' %></td>
+    <td class="num"><%= x.pension ? yen(x.pension.standard) + '（' + x.pension.grade + '等級）' : '-' %></td>
+    <td><% if (x.r.avg) { const d = x.r.grade - x.curGrade; %><span class="badge <%= d === 0 ? 'ok' : 'warn' %>"><%= d === 0 ? '変動なし' : (d > 0 ? '+' : '') + d + '等級' %></span><% } else { %><span class="badge">データ不足</span><% } %></td>
+  </tr>
+  <% }) %>
+</table>
+</div>
+<%- include('partials/layout_bottom') %>

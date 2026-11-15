@@ -1,0 +1,10 @@
+<%- include('partials/layout_top') %>
+<h1>操作ログ</h1>
+<p class="hint">勤怠修正・給与確定・設定変更・CSV出力などの操作を記録しています（直近500件）。</p>
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>日時</th><th>操作者</th><th>操作</th><th>対象</th><th>内容</th></tr>
+  <% logs.forEach(l => { %><tr><td class="small"><%= l.created_at %></td><td><%= l.actor %></td><td><%= l.action %></td><td class="small"><%= l.target %></td><td class="small"><%= l.detail %></td></tr><% }) %>
+</table>
+</div>
+<%- include('partials/layout_bottom') %>

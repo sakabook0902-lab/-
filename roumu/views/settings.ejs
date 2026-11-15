@@ -1,0 +1,51 @@
+<%- include('partials/layout_top') %>
+<h1>設定</h1>
+<% if (msg) { %><div class="flash"><%= msg %></div><% } %>
+<div class="alert">⚠ <span class="verify">要確認</span>の項目は毎年度改定されます。協会けんぽ（都道府県別）・厚生労働省（雇用保険）の公式資料で数値を確認してから給与計算を行ってください。初期値は令和8年度の公表情報をもとにした仮の値です。</div>
+<form method="post" action="/settings" class="panel">
+  <% const groups = [...new Set(DEFS.map(d => d.group))]; %>
+  <% groups.forEach(g => { %>
+  <fieldset><legend><%= g %></legend>
+    <div class="form-grid">
+      <% DEFS.filter(d => d.group === g).forEach(d => { %>
+      <label><span><%= d.label %> <% if (d.verify) { %><span class="verify">要確認</span><% } %></span>
+        <input name="<%= d.key %>" value="<%= s[d.key] %>" <%= d.key.endsWith('expiry') ? 'type=date' : '' %>>
+        <% if (d.hint) { %><span class="small muted"><%= d.hint %></span><% } %>
+      </label>
+      <% }) %>
+    </div>
+  </fieldset>
+  <% }) %>
+  <button>保存</button>
+</form>
+<div class="panel">
+  <h2>源泉所得税について</h2>
+  <p class="small">甲欄は国税庁「電子計算機等を使用して源泉徴収税額を計算する方法」（電算機計算の特例）で自動計算します。計算式は <code>src/lib/withholding.js</code> にあり、年分ごとの改正に合わせて更新が必要です。乙欄・賞与・年末調整は本MVPでは対象外です（乙欄は給与画面で手入力）。</p>
+</div>
+<div class="panel">
+  <h2>バックアップ・復元</h2>
+  <p class="small">全データ（従業員・勤怠・給与・タスク・設定・操作ログ）を1つのファイルでダウンロードできます。<strong>月1回（給与確定後）のダウンロードを推奨</strong>します。別のアカウント・サーバーへの引っ越しにも使います。</p>
+  <p><a class="btn sub" href="/settings/backup">バックアップをダウンロード</a></p>
+  <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+  <p class="small"><strong>復元：</strong>選んだバックアップファイルで、現在のデータを<strong>すべて置き換えます</strong>（置き換え前のデータはサーバー内に自動で退避されます）。</p>
+  <div class="inline">
+    <input type="file" id="restoreFile" accept=".db">
+    <button type="button" class="danger small" id="restoreBtn">このファイルで復元</button>
+  </div>
+  <p id="restoreMsg" class="small"></p>
+</div>
+<script>
+  document.getElementById('restoreBtn').addEventListener('click', async () => {
+    const f = document.getElementById('restoreFile').files[0];
+    const msg = document.getElementById('restoreMsg');
+    if (!f) { msg.textContent = 'ファイルを選んでください'; return; }
+    if (!confirm('現在のデータをすべて「' + f.name + '」の内容で置き換えます。よろしいですか？')) return;
+    msg.textContent = '復元中…';
+    try {
+      const r = await fetch('/settings/restore', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Confirm-Restore': 'yes' }, body: f });
+      const j = await r.json();
+      msg.textContent = j.ok ? '復元しました（従業員 ' + j.employees + '名）。' : '復元できませんでした：' + j.error;
+    } catch (e) { msg.textContent = '復元できませんでした：' + e.message; }
+  });
+</script>
+<%- include('partials/layout_bottom') %>
