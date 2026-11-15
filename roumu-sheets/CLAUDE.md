@@ -10,7 +10,7 @@ Googleスプレッドシートにバインドした Apps Script（V8）。人事
 - 賞与（`roumu/src/lib/bonus.js`）・年末調整（`yearEnd.js`）・全銀振込データ（`zengin.js`）も共通ライブラリ
 - 届出書類の記入内容シート（`roumu/src/lib/filings.js`）：正式様式ではなく転記用。届出書類の作成・提出の主体は会社自身（報酬を得て代行するのは社労士の独占業務）。タスクの管理キーから書類を判定（`filingForTask_`）
 - `src/appsscript.json`：マニフェスト（タイムゾーン Asia/Tokyo、Webアプリは「自分として実行」）
-- **計算ロジックはサーバー版と共通**：`../roumu/src/lib/*.js`（勤怠・給与・源泉税・標準報酬・有給・手続き）。`scripts/build.js` がモジュール登録形式（`__req('payroll')`）で `dist/Code.gs` に同梱する。**計算の修正は `roumu/src/lib` 側で行う**（Node版のテスト `roumu/test` も通すこと）
+- **計算ロジック**：`../roumu/src/lib/*.js`（勤怠・給与・源泉税・標準報酬・有給・手続き・賞与・年末調整・振込・届出書類）。純粋関数でテスト可能。`scripts/build.js` がモジュール登録形式（`__req('payroll')`）で `dist/Code.gs` に同梱する。**計算の修正は `roumu/src/lib` 側で行う**（`roumu/test` のテストも通すこと）
 - `dist/Code.gs`：利用者が Apps Script に貼り付ける1ファイル（生成物。直接編集しない）
 - `test/gas-mock.js`：SpreadsheetApp 等の最小モック。`test/flow.test.js`（メニュー操作）と `test/webapp.test.js`（Webアプリの api）で主要フローを検証
 
@@ -29,5 +29,12 @@ Googleスプレッドシートにバインドした Apps Script（V8）。人事
 - Apps Script の実行時間上限（6分）・トリガー（30秒：onEdit）を超えないよう、シートの読み書きはまとめて行う
 
 ## 毎年の保守
-`../roumu/CLAUDE.md` の「毎年の保守作業」と同じ（源泉所得税の年分パラメータ追加、料率は「設定」シートで更新）。
+| 時期 | 作業 |
+|---|---|
+| 12月頃 | 翌年分の源泉所得税：国税庁「電子計算機等を使用して源泉徴収税額を計算する方法」の翌年分を確認し、`roumu/src/lib/withholding.js` の `PARAMS` に年分を追加（テストも追加） |
+| 11月頃 | 年末調整：`roumu/src/lib/yearEnd.js` の `PARAMS` をその年分の「年末調整のしかた」と照合 |
+| 2〜3月 | 協会けんぽ（都道府県支部）の健康保険料率・介護保険料率（3月分〜）を確認し、Webアプリの「設定」で更新 |
+| 3〜4月 | 雇用保険料率（4月〜）、子ども・子育て支援金率を確認し、「設定」で更新 |
+| 随時 | 標準報酬月額表の等級改定があれば `roumu/src/lib/standardRemuneration.js` を更新 |
+
 計算ロジックを更新したら `npm run build` → `dist/Code.gs` を貼り直す（または `npm run push`）→ Webアプリを新バージョンでデプロイ。
